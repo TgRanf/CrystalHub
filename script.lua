@@ -32,33 +32,21 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
-local UIS = game:GetService("UserInputService")
 
 -- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
 
 -- Silent Aim
 getgenv().SilentAimEnabled = false
-getgenv().SilentAimTargetMode = "Убийца"
-getgenv().SilentAimHitChance = 100
-getgenv().SilentAimPrediction = true
-getgenv().SilentAimPredictionAmount = 0.165
-
--- Камера Аимбот
-getgenv().AimbotEnabled = false
-getgenv().VisibleCheckEnabled = true
-getgenv().AimbotFOV = 130
-getgenv().AimbotSmoothness = 4
-getgenv().AimbotTargetMode = "Все"
 
 -- Хитбоксы & Бой
 getgenv().HitboxEnabled = false
 getgenv().HitboxSize = 5
 getgenv().AutoGrabGunEnabled = false
-getgenv().AutoPickupGun = false
-getgenv().GunDropNotifications = false
+getgenv().KillAllEnabled = false
 
 -- Автофарм
 getgenv().AutoFarmEnabled = false
@@ -68,17 +56,12 @@ getgenv().currentTween = nil
 
 -- Визуалы & Персонаж
 getgenv().ESPEnabled = false
-getgenv().ESPHighlightEnabled = false
 getgenv().GunESPEnabled = false
-getgenv().GunESPHighlightEnabled = false
 getgenv().NoclipEnabled = false
 getgenv().CustomSpeed = 16
 getgenv().CustomJump = 50
-getgenv().XRayEnabled = false
-
--- X-Ray переменные (из MM2 Utilities)
-local xrayEnabled = false
-local object = workspace
+getgenv().FlyEnabled = false
+getgenv().FullBrightEnabled = false
 
 -- ================= ПРОВЕРКА СТАТУСА РАУНДА =================
 getgenv().isInRound = function()
@@ -95,7 +78,7 @@ getgenv().isInRound = function()
     return false
 end
 
--- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ (0 ms) =================
+-- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ =================
 getgenv().playerRoles = {}
 getgenv().COLOR_INNOCENT = Color3.fromRGB(0, 255, 0)
 getgenv().COLOR_SHERIFF  = Color3.fromRGB(0, 150, 255)
@@ -161,92 +144,50 @@ getgenv().getPlayerByRole = function(roleColor)
     end
     return nil
 end
--- =================================================================
---                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 2/4
--- =================================================================
 
--- ================= SILENT AIM ДВИЖОК (__index & __namecall) =================
-local function getSilentAimTarget()
+-- ================= SILENT AIM (ИЗ НОВОГО СКРИПТА) =================
+local function getClosestTarget()
     if not getgenv().SilentAimEnabled then return nil end
     
-    if math.random(1, 100) > getgenv().SilentAimHitChance then
-        return nil
-    end
-
     local targetPlayer = nil
+    local shortestDist = math.huge
     
-    if getgenv().SilentAimTargetMode == "Убийца" then
-        targetPlayer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-    elseif getgenv().SilentAimTargetMode == "Шериф" then
-        targetPlayer = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
-    else
-        local shortestDist = math.huge
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        targetPlayer = p
-                    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    targetPlayer = p
                 end
             end
         end
     end
-
+    
     if targetPlayer and targetPlayer.Character then
-        return targetPlayer.Character:FindFirstChild("Head") or targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        return targetPlayer.Character:FindFirstChild("Head")
     end
-
     return nil
 end
 
--- 1. Перехват Mouse.Hit / Target
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
+local oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
     if self == Mouse and not checkcaller() and getgenv().SilentAimEnabled then
-        local targetPart = getSilentAimTarget()
+        local targetPart = getClosestTarget()
         if targetPart then
-            if index == "Hit" or index == "hit" then
-                if getgenv().SilentAimPrediction and targetPart:IsA("BasePart") then
-                    return targetPart.CFrame + (targetPart.Velocity * getgenv().SilentAimPredictionAmount)
-                end
+            if index == "Hit" then
                 return targetPart.CFrame
-            elseif index == "Target" or index == "target" then
+            elseif index == "Target" then
                 return targetPart
             end
         end
     end
     return oldIndex(self, index)
 end))
-
--- 2. Перехват Raycast выстрела
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-
-    if not checkcaller() and getgenv().SilentAimEnabled and self == workspace then
-        if method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" then
-            local targetPart = getSilentAimTarget()
-            if targetPart then
-                if method == "Raycast" then
-                    local origin = args[1]
-                    local targetPos = targetPart.Position
-                    if getgenv().SilentAimPrediction then
-                        targetPos = targetPos + (targetPart.Velocity * getgenv().SilentAimPredictionAmount)
-                    end
-                    args[2] = (targetPos - origin).Unit * 1000
-                    return oldNamecall(self, unpack(args))
-                end
-            end
-        end
-    end
-
-    return oldNamecall(self, ...)
-end))
+-- =================================================================
+--                CRYSTALHUB MM2 ULTIMATE EDITION
+--                           PART 2/4
+-- =================================================================
 
 -- ================= СИСТЕМА ФЛИГА (FLING) =================
 getgenv().flingTarget = function(targetPlayer)
@@ -299,7 +240,31 @@ getgenv().flingTarget = function(targetPlayer)
     Rayfield:Notify({ Title = "CrystalHub", Content = "Флинг завершён!", Duration = 3 })
 end
 
--- ================= АВТО-ПОДБОР ПИСТОЛЕТА (ИЗ CRYSTALHUB) =================
+-- ================= KILL ALL (ИЗ НОВОГО СКРИПТА) =================
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if getgenv().KillAllEnabled and getgenv().isInRound() then
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+            
+            local hrp = char.HumanoidRootPart
+            
+            for _, victim in ipairs(Players:GetPlayers()) do
+                if victim == LocalPlayer then continue end
+                if not victim.Character or not victim.Character:FindFirstChild("HumanoidRootPart") then continue end
+                if victim.Character:FindFirstChild("Humanoid") and victim.Character.Humanoid.Health <= 0 then continue end
+                
+                repeat
+                    hrp.CFrame = victim.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1)
+                    task.wait(0.1)
+                until not victim.Character or not victim.Character:FindFirstChild("Humanoid") or victim.Character.Humanoid.Health <= 0
+            end
+        end
+    end
+end)
+
+-- ================= АВТО-ПОДБОР ПИСТОЛЕТА =================
 task.spawn(function()
     local isGrabbing = false
     while task.wait(0.1) do
@@ -329,7 +294,7 @@ task.spawn(function()
     end
 end)
 
--- ================= КНОПКА ВЫСТРЕЛА (🎯) =================
+-- ================= КНОПКА ВЫСТРЕЛА =================
 local ShotGui = nil
 getgenv().toggleShotButton = function(state)
     if state then
@@ -408,13 +373,6 @@ CombatTab:CreateToggle({
    Callback = function(Value) getgenv().AutoGrabGunEnabled = Value end,
 })
 
-CombatTab:CreateToggle({
-   Name = "Auto Pickup Gun (MM2 Utilities)",
-   CurrentValue = false,
-   Flag = "AutoPickupToggle",
-   Callback = function(Value) getgenv().AutoPickupGun = Value end,
-})
-
 CombatTab:CreateButton({
    Name = "Флинг Убийцы (Fling Murderer)",
    Callback = function()
@@ -465,50 +423,19 @@ CombatTab:CreateToggle({
    Callback = function(Value) getgenv().toggleShotButton(Value) end,
 })
 
+CombatTab:CreateToggle({
+   Name = "Kill All Players",
+   CurrentValue = false,
+   Flag = "KillAllToggle",
+   Callback = function(Value) getgenv().KillAllEnabled = Value end,
+})
+
 -- Вкладка: Silent Aim
 SilentTab:CreateToggle({
    Name = "🎯 Включить Silent Aim (Тихий Аим)",
    CurrentValue = false,
    Flag = "SilentAimToggle",
    Callback = function(Value) getgenv().SilentAimEnabled = Value end,
-})
-
-SilentTab:CreateDropdown({
-   Name = "Цель Silent Aim",
-   Options = {"Убийца", "Шериф", "Все"},
-   CurrentOption = {"Убийца"},
-   MultipleOptions = false,
-   Flag = "SilentAimTargetDropdown",
-   Callback = function(Option)
-       getgenv().SilentAimTargetMode = type(Option) == "table" and Option[1] or Option
-   end,
-})
-
-SilentTab:CreateToggle({
-   Name = "Предикшн Движения (Prediction)",
-   CurrentValue = true,
-   Flag = "PredictionToggle",
-   Callback = function(Value) getgenv().SilentAimPrediction = Value end,
-})
-
-SilentTab:CreateSlider({
-   Name = "Коэффициент Предикшена",
-   Range = {0, 0.5},
-   Increment = 0.01,
-   Suffix = " sec",
-   CurrentValue = 0.165,
-   Flag = "PredictionSlider",
-   Callback = function(Value) getgenv().SilentAimPredictionAmount = Value end,
-})
-
-SilentTab:CreateSlider({
-   Name = "Шанс Попадания (Hit Chance)",
-   Range = {10, 100},
-   Increment = 5,
-   Suffix = "%",
-   CurrentValue = 100,
-   Flag = "HitChanceSlider",
-   Callback = function(Value) getgenv().SilentAimHitChance = Value end,
 })
 
 -- Вкладка: Автофарм
@@ -579,255 +506,80 @@ TeleportTab:CreateButton({
    end,
 })
 
--- ================= НОВЫЕ ФУНКЦИИ ИЗ MM2 UTILITIES =================
-
--- Gun Drop Status + Уведомления (из MM2 Utilities)
-local gunDropStatus = false
-local gunDropNotified = false
-
-local function checkGunDrop()
-    local gunDrop = workspace:FindFirstChild("GunDrop", true)
-    if gunDrop then
-        gunDropStatus = true
-        if getgenv().GunDropNotifications and not gunDropNotified then
-            Rayfield:Notify({ Title = "CrystalHub", Content = "🔫 Пистолет упал!", Duration = 3 })
-            gunDropNotified = true
-        end
-    else
-        gunDropStatus = false
-        gunDropNotified = false
-    end
-    return gunDropStatus
-end
-
 -- Вкладка: Визуалы
 VisualsTab:CreateToggle({
-   Name = "Gun Drop Notifications",
+   Name = "Включить ESP Ролей (Игроки)",
    CurrentValue = false,
-   Flag = "GunDropNotifToggle",
+   Flag = "ESPToggle",
    Callback = function(Value)
-       getgenv().GunDropNotifications = Value
-       if Value then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Уведомления о пистолете включены", Duration = 2 })
-       end
-   end,
-})
-
-VisualsTab:CreateLabel({
-   Name = "Gun Drop Status: Waiting...",
-   Flag = "GunDropStatusLabel",
-})
-
--- Обновление статуса
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        local status = checkGunDrop()
-        local label = Window:GetFlag("GunDropStatusLabel")
-        if label then
-            if status then
-                label:SetText("🔫 Gun Drop Status: DROPPED")
-            else
-                label:SetText("🔫 Gun Drop Status: NOT DROPPED")
-            end
-        end
-    end
-end)
-
--- X-Ray (из MM2 Utilities)
-local xrayEnabled = false
-local object = workspace
-
-local function XrayOn(obj)
-    for _, v in pairs(obj:GetChildren()) do
-        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-            v.LocalTransparencyModifier = 0.5
-        end
-        XrayOn(v)
-    end
-end
-
-local function XrayOff(obj)
-    for _, v in pairs(obj:GetChildren()) do
-        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-            v.LocalTransparencyModifier = 0
-        end
-        XrayOff(v)
-    end
-end
-
-VisualsTab:CreateToggle({
-   Name = "X-Ray (See Through Walls)",
-   CurrentValue = false,
-   Flag = "XRayToggle",
-   Callback = function(Value)
-       xrayEnabled = Value
-       if Value then
-           XrayOn(object)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "X-Ray включён", Duration = 2 })
-       else
-           XrayOff(object)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "X-Ray выключен", Duration = 2 })
-       end
-   end,
-})
-
--- ================= ESP (ИЗ SIMPLE HUB V9.5.8) =================
-local ESP_Active = false
-
-local function GetPlayerRole(player)
-    if not player then return "Innocent" end
-    local backpack = player:FindFirstChild("Backpack")
-    local char = player.Character
-    
-    if (backpack and backpack:FindFirstChild("Gun")) or (char and char:FindFirstChild("Gun")) then
-        return "Sheriff"
-    elseif (backpack and backpack:FindFirstChild("Knife")) or (char and char:FindFirstChild("Knife")) then
-        return "Murderer"
-    end
-    return "Innocent"
-end
-
-local function ManagementESP()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            local existingHighlight = char:FindFirstChild("CrystalHubESP")
-            
-            if ESP_Active then
-                if not existingHighlight then
-                    existingHighlight = Instance.new("Highlight")
-                    existingHighlight.Name = "CrystalHubESP"
-                    existingHighlight.FillTransparency = 1
-                    existingHighlight.OutlineTransparency = 0
-                    existingHighlight.Parent = char
-                end
-                
-                local role = GetPlayerRole(player)
-                if role == "Murderer" then
-                    existingHighlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-                elseif role == "Sheriff" then
-                    existingHighlight.OutlineColor = Color3.fromRGB(0, 100, 255)
-                else
-                    existingHighlight.OutlineColor = Color3.fromRGB(0, 255, 0)
-                end
-            else
-                if existingHighlight then existingHighlight:Destroy() end
-            end
-        end
-    end
-end
-
-VisualsTab:CreateToggle({
-   Name = "ESP Roles (Highlight)",
-   CurrentValue = false,
-   Flag = "ESPHighlightToggle",
-   Callback = function(Value)
-       ESP_Active = Value
+       getgenv().ESPEnabled = Value
        if not Value then
            for _, p in ipairs(Players:GetPlayers()) do
                if p.Character then
-                   local hl = p.Character:FindFirstChild("CrystalHubESP")
-                   if hl then hl:Destroy() end
+                   if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
+                   if p.Character:FindFirstChild("Head") and p.Character.Head:FindFirstChild("RoleTag") then
+                       p.Character.Head.RoleTag:Destroy()
+                   end
                end
            end
        end
    end,
 })
 
-task.spawn(function()
-    while task.wait(0.3) do
-        ManagementESP()
-    end
-end)
-
--- ================= GUN ESP (ИЗ SIMPLE HUB V9.5.8) =================
-local GunESP_Active = false
-
-local function GetRealDroppedGun()
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if (obj.Name == "GunDrop" or obj.Name == "Drop" or obj.Name == "Gun") and obj:IsA("Model") then
-            if not Players:GetPlayerFromCharacter(obj) then return obj end
-        end
-    end
-    local normalDrop = Workspace:FindFirstChild("GunDrop", true)
-    if normalDrop and not normalDrop:IsDescendantOf(LocalPlayer.Character) then
-        return normalDrop
-    end
-    return nil
-end
-
-local function UpdateGunESP()
-    local droppedGun = GetRealDroppedGun()
-    if droppedGun then
-        local gunHighlight = droppedGun:FindFirstChild("GunESP_Outline")
-        if GunESP_Active then
-            if not gunHighlight then
-                gunHighlight = Instance.new("Highlight")
-                gunHighlight.Name = "GunESP_Outline"
-                gunHighlight.FillTransparency = 0.5
-                gunHighlight.FillColor = Color3.fromRGB(255, 130, 0)
-                gunHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                gunHighlight.OutlineTransparency = 0
-                gunHighlight.Parent = droppedGun
-            end
-        else
-            if gunHighlight then gunHighlight:Destroy() end
-        end
-    end
-end
-
 VisualsTab:CreateToggle({
-   Name = "Gun ESP (Highlight)",
+   Name = "ESP Выпавшего Пистолета (Gun Drop ESP)",
    CurrentValue = false,
-   Flag = "GunESPHighlightToggle",
+   Flag = "GunESPToggle",
    Callback = function(Value)
-       GunESP_Active = Value
+       getgenv().GunESPEnabled = Value
        if not Value then
-           local gun = GetRealDroppedGun()
-           if gun then
-               local hl = gun:FindFirstChild("GunESP_Outline")
-               if hl then hl:Destroy() end
+           for _, obj in ipairs(Workspace:GetDescendants()) do
+               if obj.Name == "GunDrop" then
+                   if obj:FindFirstChild("GunESP") then obj.GunESP:Destroy() end
+                   if obj:FindFirstChild("GunTag") then obj.GunTag:Destroy() end
+               end
            end
        end
    end,
 })
 
-task.spawn(function()
-    while task.wait(0.5) do
-        UpdateGunESP()
-    end
-end)
+VisualsTab:CreateToggle({
+   Name = "FullBright (Яркий мир)",
+   CurrentValue = false,
+   Flag = "FullBrightToggle",
+   Callback = function(Value)
+       getgenv().FullBrightEnabled = Value
+       if Value then
+           Lighting.Brightness = 2
+           Lighting.ClockTime = 14
+           Lighting.FogEnd = 100000
+           Lighting.GlobalShadows = false
+           Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+           Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright включён", Duration = 2 })
+       else
+           Lighting.Brightness = 1
+           Lighting.ClockTime = 14
+           Lighting.FogEnd = 1000
+           Lighting.GlobalShadows = true
+           Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+           Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright выключен", Duration = 2 })
+       end
+   end,
+})
 
--- ================= СПЕКТИРОВАНИЕ (ИЗ MM2 UTILITIES) =================
-local Spectating = Instance.new("TextLabel")
-Spectating.Parent = CoreGui
-Spectating.Position = UDim2.new(0.5, 0, 0.8, 0)
-Spectating.Size = UDim2.new(0, 200, 0, 30)
-Spectating.AnchorPoint = Vector2.new(0.5, 0.5)
-Spectating.BackgroundTransparency = 1
-Spectating.Text = "Spectating: None"
-Spectating.TextColor3 = Color3.fromRGB(255, 255, 255)
-Spectating.TextSize = 24
-Spectating.Font = Enum.Font.GothamBold
-Spectating.Visible = false
-
-local mbtn = false
-local sbtn = false
-
--- Используем кнопки из интерфейса для спектирования
--- Эти функции будут вызваны из кнопок "Телепорт к Убийце" и "Телепорт к Шерифу"
--- =================================================================
---                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 4/4
--- =================================================================
-
--- ================= ВКЛАДКА: ИГРОК =================
+-- Вкладка: Игрок
 PlayerTab:CreateToggle({
    Name = "Noclip (Сквозь стены)",
    CurrentValue = false,
    Flag = "NoclipToggle",
    Callback = function(Value) getgenv().NoclipEnabled = Value end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Fly (Полёт)",
+   CurrentValue = false,
+   Flag = "FlyToggle",
+   Callback = function(Value) getgenv().FlyEnabled = Value end,
 })
 
 PlayerTab:CreateSlider({
@@ -849,6 +601,10 @@ PlayerTab:CreateSlider({
    Flag = "JumpSlider",
    Callback = function(Value) getgenv().CustomJump = Value end,
 })
+-- =================================================================
+--                CRYSTALHUB MM2 ULTIMATE EDITION
+--                           PART 4/4
+-- =================================================================
 
 -- ================= РЕНДЕР И ОБНОВЛЕНИЯ =================
 
@@ -865,9 +621,89 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+
+    -- ESP Игроков
+    if getgenv().ESPEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                local color = getgenv().playerRoles[p] or getgenv().COLOR_INNOCENT
+                
+                local hl = p.Character:FindFirstChild("RoleESP")
+                if not hl then
+                    hl = Instance.new("Highlight")
+                    hl.Name = "RoleESP"
+                    hl.Adornee = p.Character
+                    hl.Parent = p.Character
+                    hl.FillTransparency = 0.4
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                end
+                hl.FillColor = color
+                hl.OutlineColor = color
+
+                local tag = p.Character.Head:FindFirstChild("RoleTag")
+                if not tag then
+                    tag = Instance.new("BillboardGui")
+                    tag.Name = "RoleTag"
+                    tag.Size = UDim2.new(0, 120, 0, 30)
+                    tag.StudsOffset = Vector3.new(0, 2.5, 0)
+                    tag.AlwaysOnTop = true
+                    tag.Parent = p.Character.Head
+
+                    local label = Instance.new("TextLabel")
+                    label.Name = "Text"
+                    label.Size = UDim2.new(1, 0, 1, 0)
+                    label.BackgroundTransparency = 1
+                    label.TextScaled = true
+                    label.Font = Enum.Font.SourceSansBold
+                    label.Parent = tag
+                end
+
+                local roleName = "НЕВИННЫЙ"
+                if color == getgenv().COLOR_MURDERER then roleName = "УБИЙЦА 🔪" end
+                if color == getgenv().COLOR_SHERIFF then roleName = "ШЕРИФ 🔫" end
+
+                tag.Text.Text = p.Name .. " [" .. roleName .. "]"
+                tag.Text.TextColor3 = color
+            end
+        end
+    end
+
+    -- ESP Пистолета
+    if getgenv().GunESPEnabled then
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj.Name == "GunDrop" and obj:IsA("BasePart") then
+                if not obj:FindFirstChild("GunESP") then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "GunESP"
+                    hl.Adornee = obj
+                    hl.Parent = obj
+                    hl.FillColor = Color3.fromRGB(255, 255, 0)
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    hl.FillTransparency = 0.2
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
+                    local tag = Instance.new("BillboardGui")
+                    tag.Name = "GunTag"
+                    tag.Size = UDim2.new(0, 120, 0, 30)
+                    tag.StudsOffset = Vector3.new(0, 2, 0)
+                    tag.AlwaysOnTop = true
+                    tag.Parent = obj
+
+                    local label = Instance.new("TextLabel")
+                    label.Size = UDim2.new(1, 0, 1, 0)
+                    label.BackgroundTransparency = 1
+                    label.Text = "🔫 ПИСТОЛЕТ"
+                    label.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    label.TextScaled = true
+                    label.Font = Enum.Font.SourceSansBold
+                    label.Parent = tag
+                end
+            end
+        end
+    end
 end)
 
--- Управление физикой игрока
+-- ================= УПРАВЛЕНИЕ ФИЗИКОЙ =================
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if char then
@@ -884,63 +720,97 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ================= АВТО-ПОДБОР ПИСТОЛЕТА (ИЗ MM2 UTILITIES) =================
+-- ================= FLY (ИЗ НОВОГО СКРИПТА) =================
+local flyConnection = nil
+local flyBodyGyro = nil
+local flyBodyVelocity = nil
+local flySpeed = 0
+local flyMaxSpeed = 50
+
+local function startFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    if not torso then return end
+    
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    humanoid.PlatformStand = true
+    
+    flyBodyGyro = Instance.new("BodyGyro", torso)
+    flyBodyGyro.P = 9e4
+    flyBodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyBodyGyro.cframe = torso.CFrame
+    
+    flyBodyVelocity = Instance.new("BodyVelocity", torso)
+    flyBodyVelocity.velocity = Vector3.new(0, 0.1, 0)
+    flyBodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
+    
+    if flyConnection then flyConnection:Disconnect() end
+    
+    local controls = {f = 0, b = 0, l = 0, r = 0}
+    local lastControls = {f = 0, b = 0, l = 0, r = 0}
+    local speed = 0
+    local maxSpeed = 50
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        if not getgenv().FlyEnabled or not char or not char.Parent then
+            if flyConnection then flyConnection:Disconnect() end
+            return
+        end
+        
+        local cam = Workspace.CurrentCamera
+        if not cam then return end
+        
+        -- Управление WASD
+        local moveDir = UserInputService:GetMoveDirection()
+        
+        if moveDir and moveDir.Magnitude > 0 then
+            speed = math.min(maxSpeed, moveDir.Magnitude * maxSpeed)
+            
+            local lookVector = cam.CFrame.LookVector
+            local rightVector = cam.CFrame.RightVector
+            
+            local moveVector = (lookVector * -moveDir.Z) + (rightVector * moveDir.X)
+            flyBodyVelocity.velocity = moveVector * speed
+            flyBodyGyro.cframe = cam.CFrame
+        else
+            speed = math.max(0, speed - 2)
+            flyBodyVelocity.velocity = flyBodyVelocity.velocity * 0.9
+        end
+    end)
+end
+
 task.spawn(function()
-    while task.wait(0.3) do
-        if getgenv().AutoPickupGun and getgenv().isInRound() and getgenv().isAlive() then
-            local gunDrop = workspace:FindFirstChild("GunDrop", true)
-            if gunDrop then
-                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local oldCF = hrp.CFrame
-                    hrp.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
-                    task.wait(0.2)
-                    hrp.CFrame = oldCF
-                    Rayfield:Notify({ Title = "CrystalHub", Content = "🔫 Пистолет подобран!", Duration = 2 })
-                    task.wait(1)
+    while true do
+        task.wait(0.1)
+        if getgenv().FlyEnabled then
+            if not flyBodyVelocity then
+                startFly()
+            end
+        else
+            if flyConnection then flyConnection:Disconnect() end
+            if flyBodyGyro then flyBodyGyro:Destroy() end
+            if flyBodyVelocity then flyBodyVelocity:Destroy() end
+            
+            local char = LocalPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.PlatformStand = false
                 end
             end
+            
+            flyBodyGyro = nil
+            flyBodyVelocity = nil
+            flyConnection = nil
         end
     end
 end)
 
--- ================= X-RAY HOTKEY (T) (ИЗ MM2 UTILITIES) =================
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.T then
-        xrayEnabled = not xrayEnabled
-        if xrayEnabled then
-            XrayOn(object)
-            Rayfield:Notify({ Title = "CrystalHub", Content = "X-Ray включён (T)", Duration = 2 })
-        else
-            XrayOff(object)
-            Rayfield:Notify({ Title = "CrystalHub", Content = "X-Ray выключен (T)", Duration = 2 })
-        end
-    end
-end)
-
--- ================= CTRL + CLICK TELEPORT (ИЗ MM2 UTILITIES) =================
-local ctrlpressed = false
-
-mouse.Button1Down:Connect(function()
-    if ctrlpressed then
-        LocalPlayer.Character:MoveTo(mouse.Hit.p)
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Телепорт по клику!", Duration = 2 })
-    end
-end)
-
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.LeftControl then
-        ctrlpressed = true
-    end
-end)
-
-UIS.InputEnded:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.LeftControl then
-        ctrlpressed = false
-    end
-end)
-
--- ================= ЛОГИКА АВТОФАРМА =================
+-- ================= ЛОГИКА АВТОФАРМА (ИЗ НОВОГО СКРИПТА) =================
 task.spawn(function()
     while true do
         task.wait(0.1)
