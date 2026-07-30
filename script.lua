@@ -1,6 +1,6 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                REWORKED - ALL SOURCES INTEGRATED
+--                ALL FUNCTIONS FROM YOUR SOURCES
 --                           PART 1/4
 -- =================================================================
 
@@ -86,7 +86,7 @@ getgenv().isAlive = function()
     return hum and hum.Health > 0
 end
 
--- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ =================
+-- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ (ИЗ ВАШЕГО КОДА) =================
 getgenv().playerRoles = {}
 getgenv().COLOR_INNOCENT = Color3.fromRGB(0, 255, 0)
 getgenv().COLOR_SHERIFF  = Color3.fromRGB(0, 150, 255)
@@ -289,13 +289,13 @@ local function teleportHandleToPart(part)
         end
     end
     if not Tool then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "No tool equipped!", Duration = 2 })
+        print("No tool equipped. Please equip a tool and try again.")
         return
     end
     
     local Handle = Tool:FindFirstChild("Handle")
     if not Handle then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Tool has no Handle!", Duration = 2 })
+        print("Tool has no Handle. This script may not work as intended.")
         return
     end
     
@@ -848,32 +848,48 @@ MiscTab:CreateButton({
 --                           PART 4/4
 -- =================================================================
 
--- ================= ESP (ИЗ MURDER_MYSTERY_2-SIMPLE_ESP) =================
+-- ================= ESP (ТОЧНО КАК В MURDER_MYSTERY_2-SIMPLE_ESP) =================
+local faces = {"Back", "Bottom", "Front", "Left", "Right", "Top"}
+
 local function createESP(player)
     if player == LocalPlayer then return end
-    if not player.Character or not player.Character:FindFirstChild("Head") then return end
+    if not player.Character then return end
     
-    for _, child in ipairs(player.Character.Head:GetChildren()) do
-        if child:IsA("BoxHandleAdornment") then
+    -- Удаляем старый ESP
+    for _, child in ipairs(player.Character:GetDescendants()) do
+        if child.Name == "EGUI" then
             child:Destroy()
         end
     end
     
-    local esp = Instance.new("BoxHandleAdornment")
-    esp.Parent = player.Character.Head
-    esp.Size = Vector3.new(1, 1, 1)
-    esp.AlwaysOnTop = true
-    esp.Adornee = player.Character.Head
-    esp.Visible = true
-    esp.ZIndex = 2
-    
-    local color = getgenv().playerRoles[player]
-    if color == getgenv().COLOR_MURDERER then
-        esp.Color3 = Color3.new(1, 0, 0)
-    elseif color == getgenv().COLOR_SHERIFF then
-        esp.Color3 = Color3.new(0, 0, 1)
-    else
-        esp.Color3 = Color3.new(0, 1, 0)
+    -- Создаём ESP на всех частях тела (как в исходнике)
+    for _, part in ipairs(player.Character:GetChildren()) do
+        if part.Name == "Head" or part.Name == "Torso" or part.Name == "Right Arm" or part.Name == "Right Leg" or part.Name == "Left Arm" or part.Name == "Left Leg" then
+            for _, face in ipairs(faces) do
+                local surfaceGui = Instance.new("SurfaceGui")
+                surfaceGui.Name = "EGUI"
+                surfaceGui.Parent = part
+                surfaceGui.Face = face
+                surfaceGui.AlwaysOnTop = true
+                
+                local frame = Instance.new("Frame")
+                frame.Name = "EGUI"
+                frame.Parent = surfaceGui
+                frame.Size = UDim2.new(1, 0, 1, 0)
+                frame.BorderSizePixel = 0
+                frame.BackgroundTransparency = 0.5
+                
+                -- Цвет по роли
+                local color = getgenv().playerRoles[player]
+                if color == getgenv().COLOR_MURDERER then
+                    frame.BackgroundColor3 = Color3.new(1, 0, 0)
+                elseif color == getgenv().COLOR_SHERIFF then
+                    frame.BackgroundColor3 = Color3.new(0, 0, 1)
+                else
+                    frame.BackgroundColor3 = Color3.new(0, 1, 0)
+                end
+            end
+        end
     end
 end
 
@@ -885,9 +901,9 @@ task.spawn(function()
             end
         else
             for _, p in ipairs(Players:GetPlayers()) do
-                if p.Character and p.Character:FindFirstChild("Head") then
-                    for _, child in ipairs(p.Character.Head:GetChildren()) do
-                        if child:IsA("BoxHandleAdornment") then
+                if p.Character then
+                    for _, child in ipairs(p.Character:GetDescendants()) do
+                        if child.Name == "EGUI" then
                             child:Destroy()
                         end
                     end
@@ -897,7 +913,7 @@ task.spawn(function()
     end
 end)
 
--- ================= ESP GUN DROP =================
+-- ================= ESP GUN DROP (ИЗ ВАШЕГО КОДА) =================
 local function updateGunESP()
     if not getgenv().GunESPEnabled or not getgenv().isInRound() then
         for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -946,7 +962,7 @@ task.spawn(function()
     end
 end)
 
--- ================= АВТО-ПОДБОР ПИСТОЛЕТА =================
+-- ================= АВТО-ПОДБОР ПИСТОЛЕТА (ИЗ ВАШЕГО КОДА) =================
 task.spawn(function()
     local isGrabbing = false
     while task.wait(0.1) do
@@ -976,7 +992,7 @@ task.spawn(function()
     end
 end)
 
--- ================= УПРАВЛЕНИЕ ФИЗИКОЙ =================
+-- ================= УПРАВЛЕНИЕ ФИЗИКОЙ (ИЗ ВАШЕГО КОДА) =================
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if char then
@@ -1061,7 +1077,7 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     elseif key == Enum.KeyCode.D then flyControls.R = 0 end
 end)
 
--- ================= INFINITE JUMP =================
+-- ================= INFINITE JUMP (ИЗ MARSINSANITY) =================
 game:GetService("UserInputService").JumpRequest:Connect(function()
     if getgenv().InfiniteJumpEnabled and LocalPlayer.Character then
         local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
@@ -1071,7 +1087,7 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     end
 end)
 
--- ================= АВТОФАРМ =================
+-- ================= АВТОФАРМ (ИЗ ВАШЕГО КОДА) =================
 task.spawn(function()
     while true do
         task.wait(0.1)
