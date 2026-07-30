@@ -2,6 +2,7 @@
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --            Includes: Instant Role Detect, Silent Aim,
 --            AutoFarm, Hitbox Expander, Fling, ESP & More
+--                           PART 1/4
 -- =================================================================
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -62,6 +63,7 @@ getgenv().AutoFarmEnabled = false
 getgenv().FarmSpeed = 30
 getgenv().SmartFarm = true
 getgenv().currentTween = nil
+getgenv().isFarming = false
 
 -- Визуалы & Персонаж
 getgenv().ESPEnabled = false
@@ -70,7 +72,7 @@ getgenv().NoclipEnabled = false
 getgenv().CustomSpeed = 16
 getgenv().CustomJump = 50
 
--- ================= ПРОВЕРКА СТАТУСА РАУНДА (оптимизировано) =================
+-- ================= ПРОВЕРКА СТАТУСА =================
 local roundCache = false
 local roundCheckTime = 0
 getgenv().isInRound = function()
@@ -80,7 +82,14 @@ getgenv().isInRound = function()
     return roundCache
 end
 
--- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ (0 ms) =================
+getgenv().isAlive = function()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local hum = char:FindFirstChild("Humanoid")
+    return hum and hum.Health > 0
+end
+
+-- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ =================
 getgenv().playerRoles = {}
 getgenv().COLOR_INNOCENT = Color3.fromRGB(0, 255, 0)
 getgenv().COLOR_SHERIFF  = Color3.fromRGB(0, 150, 255)
@@ -123,14 +132,27 @@ local function trackPlayerRoles(player)
 
     player.CharacterAdded:Connect(function(char)
         setupContainerListener(char)
+        getgenv().playerRoles[player] = nil
     end)
     if player.Character then setupContainerListener(player.Character) end
+    
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        if not player.Character or not player.Character:FindFirstChild("Humanoid") or player.Character.Humanoid.Health <= 0 then
+            getgenv().playerRoles[player] = nil
+        end
+    end)
 end
 
 task.spawn(function()
     while task.wait(1) do
         if not getgenv().isInRound() then
             table.clear(getgenv().playerRoles)
+        end
+        for p, _ in pairs(getgenv().playerRoles) do
+            if not p.Character or not p.Character:FindFirstChild("Humanoid") or p.Character.Humanoid.Health <= 0 then
+                getgenv().playerRoles[p] = nil
+            end
         end
     end
 end)
@@ -141,7 +163,9 @@ Players.PlayerAdded:Connect(trackPlayerRoles)
 getgenv().getPlayerByRole = function(roleColor)
     for p, color in pairs(getgenv().playerRoles) do
         if p ~= LocalPlayer and color == roleColor and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            return p
+            if p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                return p
+            end
         end
     end
     return nil
@@ -151,7 +175,7 @@ end
 --                           PART 2/4
 -- =================================================================
 
--- ================= SILENT AIM ДВИЖОК (__index & __namecall) =================
+-- ================= SILENT AIM =================
 local function getSilentAimTarget()
     if not getgenv().SilentAimEnabled then return nil end
     
@@ -188,7 +212,6 @@ local function getSilentAimTarget()
     return nil
 end
 
--- 1. Перехват Mouse.Hit / Target
 local oldIndex
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
     if self == Mouse and not checkcaller() and getgenv().SilentAimEnabled then
@@ -207,7 +230,6 @@ oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
     return oldIndex(self, index)
 end))
 
--- 2. Перехват Raycast выстрела
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local method = getnamecallmethod()
@@ -233,7 +255,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     return oldNamecall(self, ...)
 end))
 
--- ================= СИСТЕМА ФЛИГА (ИСПРАВЛЕН - HANDLE TELEPORT) =================
+-- ================= СИСТЕМА ФЛИГА =================
 getgenv().flingTarget = function(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then
         Rayfield:Notify({ Title = "CrystalHub", Content = "Цель не найдена!", Duration = 3 })
@@ -248,7 +270,19 @@ getgenv().flingTarget = function(targetPlayer)
 
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Возьмите инструмент!", Duration = 3 })
+        local bp = LocalPlayer:FindFirstChild("Backpack")
+        if bp then
+            tool = bp:FindFirstChildOfClass("Tool")
+            if tool then
+                char.Humanoid:EquipTool(tool)
+                task.wait(0.1)
+                tool = char:FindFirstChildOfClass("Tool")
+            end
+        end
+    end
+
+    if not tool then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Нет инструмента!", Duration = 3 })
         return
     end
 
@@ -285,41 +319,7 @@ getgenv().flingTarget = function(targetPlayer)
     Rayfield:Notify({ Title = "CrystalHub", Content = "Флинг выполнен!", Duration = 3 })
 end
 
--- ================= АВТО-ПОДБОР ПИСТОЛЕТА =================
-task.spawn(function()
-    local isGrabbing = false
-    while task.wait(0.1) do
-        if getgenv().AutoGrabGunEnabled and getgenv().isInRound() and not isGrabbing then
-            local gunDrop = nil
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj.Name == "GunDrop" and obj:IsA("BasePart") then
-                    gunDrop = obj
-                    break
-                end
-            end
-
-            if gunDrop then
-                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    isGrabbing = true
-                    local oldCFrame = hrp.CFrame
-                    hrp.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
-                    task.wait(0.25)
-                    hrp.CFrame = oldCFrame
-                    Rayfield:Notify({ Title = "CrystalHub", Content = "Пистолет подхвачен!", Duration = 2 })
-                    task.wait(1)
-                    isGrabbing = false
-                end
-            end
-        end
-    end
-end)
--- =================================================================
---                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 3/4
--- =================================================================
-
--- ================= КНОПКА ВЫСТРЕЛА (🎯) =================
+-- ================= КНОПКА ВЫСТРЕЛА =================
 local ShotGui = nil
 getgenv().toggleShotButton = function(state)
     if state then
@@ -351,8 +351,8 @@ getgenv().toggleShotButton = function(state)
             stroke.Thickness = 2
 
             btn.MouseButton1Click:Connect(function()
-                if not getgenv().isInRound() then
-                    Rayfield:Notify({ Title = "CrystalHub", Content = "В лобби недоступно!", Duration = 3 })
+                if not getgenv().isInRound() or not getgenv().isAlive() then
+                    Rayfield:Notify({ Title = "CrystalHub", Content = "Недоступно!", Duration = 3 })
                     return
                 end
 
@@ -383,19 +383,22 @@ getgenv().toggleShotButton = function(state)
         if ShotGui then ShotGui.Enabled = false end
     end
 end
+-- =================================================================
+--                CRYSTALHUB MM2 ULTIMATE EDITION
+--                           PART 3/4
+-- =================================================================
 
 -- ================= ИНТЕРФЕЙС ЭЛЕМЕНТЫ =================
 
--- Вкладка: Бой
 CombatTab:CreateToggle({
-   Name = "Авто-подбор Пистолета (Auto-Grab Gun)",
+   Name = "Авто-подбор Пистолета",
    CurrentValue = false,
    Flag = "AutoGrabToggle",
    Callback = function(Value) getgenv().AutoGrabGunEnabled = Value end,
 })
 
 CombatTab:CreateButton({
-   Name = "Флинг Убийцы (Fling Murderer)",
+   Name = "Флинг Убийцы",
    Callback = function()
        local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
        getgenv().flingTarget(m)
@@ -403,7 +406,7 @@ CombatTab:CreateButton({
 })
 
 CombatTab:CreateButton({
-   Name = "Флинг Шерифа (Fling Sheriff)",
+   Name = "Флинг Шерифа",
    Callback = function()
        local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
        getgenv().flingTarget(s)
@@ -411,7 +414,7 @@ CombatTab:CreateButton({
 })
 
 CombatTab:CreateToggle({
-   Name = "Увеличение Хитбоксов (Hitbox Expander)",
+   Name = "Увеличение Хитбоксов",
    CurrentValue = false,
    Flag = "HitboxToggle",
    Callback = function(Value)
@@ -438,22 +441,21 @@ CombatTab:CreateSlider({
 })
 
 CombatTab:CreateToggle({
-   Name = "Отображать кнопку Выстрела (🎯)",
+   Name = "Кнопка Выстрела",
    CurrentValue = false,
    Flag = "AutoShotToggle",
    Callback = function(Value) getgenv().toggleShotButton(Value) end,
 })
 
--- Вкладка: Silent Aim
 SilentTab:CreateToggle({
-   Name = "🎯 Включить Silent Aim (Тихий Аим)",
+   Name = "Silent Aim",
    CurrentValue = false,
    Flag = "SilentAimToggle",
    Callback = function(Value) getgenv().SilentAimEnabled = Value end,
 })
 
 SilentTab:CreateDropdown({
-   Name = "Цель Silent Aim",
+   Name = "Цель",
    Options = {"Убийца", "Шериф", "Все"},
    CurrentOption = {"Убийца"},
    MultipleOptions = false,
@@ -464,14 +466,14 @@ SilentTab:CreateDropdown({
 })
 
 SilentTab:CreateToggle({
-   Name = "Предикшн Движения (Prediction)",
+   Name = "Предикшн",
    CurrentValue = true,
    Flag = "PredictionToggle",
    Callback = function(Value) getgenv().SilentAimPrediction = Value end,
 })
 
 SilentTab:CreateSlider({
-   Name = "Коэффициент Предикшена",
+   Name = "Коэффициент",
    Range = {0, 0.5},
    Increment = 0.01,
    Suffix = " sec",
@@ -481,7 +483,7 @@ SilentTab:CreateSlider({
 })
 
 SilentTab:CreateSlider({
-   Name = "Шанс Попадания (Hit Chance)",
+   Name = "Шанс попадания",
    Range = {10, 100},
    Increment = 5,
    Suffix = "%",
@@ -490,9 +492,8 @@ SilentTab:CreateSlider({
    Callback = function(Value) getgenv().SilentAimHitChance = Value end,
 })
 
--- Вкладка: Автофарм
 FarmTab:CreateToggle({
-   Name = "Включить Умный Автофарм Монет",
+   Name = "Автофарм монет",
    CurrentValue = false,
    Flag = "AutoFarmToggle",
    Callback = function(Value)
@@ -500,12 +501,13 @@ FarmTab:CreateToggle({
        if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
            LocalPlayer.Character.Humanoid.PlatformStand = false
            if getgenv().currentTween then getgenv().currentTween:Cancel() end
+           getgenv().isFarming = false
        end
    end,
 })
 
 FarmTab:CreateToggle({
-   Name = "Безопасный режим (Обходить Убийцу)",
+   Name = "Обходить убийцу",
    CurrentValue = true,
    Flag = "SmartFarmToggle",
    Callback = function(Value) getgenv().SmartFarm = Value end,
@@ -520,12 +522,7 @@ FarmTab:CreateSlider({
    Flag = "FarmSpeedSlider",
    Callback = function(Value) getgenv().FarmSpeed = Value end,
 })
--- =================================================================
---                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 4/4
--- =================================================================
 
--- Вкладка: Телепорты
 TeleportTab:CreateButton({
    Name = "Телепорт в Лобби",
    Callback = function()
@@ -539,7 +536,7 @@ TeleportTab:CreateButton({
 })
 
 TeleportTab:CreateButton({
-   Name = "Телепорт к Убийце 🔪",
+   Name = "Телепорт к Убийце",
    Callback = function()
        local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
        if m and m.Character and m.Character:FindFirstChild("HumanoidRootPart") then
@@ -551,7 +548,7 @@ TeleportTab:CreateButton({
 })
 
 TeleportTab:CreateButton({
-   Name = "Телепорт к Шерифу 🔫",
+   Name = "Телепорт к Шерифу",
    Callback = function()
        local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
        if s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
@@ -562,9 +559,8 @@ TeleportTab:CreateButton({
    end,
 })
 
--- Вкладка: Визуалы
 VisualsTab:CreateToggle({
-   Name = "Включить ESP Ролей (Игроки)",
+   Name = "ESP Ролей",
    CurrentValue = false,
    Flag = "ESPToggle",
    Callback = function(Value)
@@ -572,8 +568,9 @@ VisualsTab:CreateToggle({
        if not Value then
            for _, p in ipairs(Players:GetPlayers()) do
                if p.Character then
+                   if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
                    if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
-                   if p.Character:FindFirstChild("Head") and p.Character.Head:FindFirstChild("RoleTag") then
+                   if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
                        p.Character.Head.RoleTag:Destroy()
                    end
                end
@@ -583,14 +580,14 @@ VisualsTab:CreateToggle({
 })
 
 VisualsTab:CreateToggle({
-   Name = "ESP Выпавшего Пистолета (Gun Drop ESP)",
+   Name = "ESP Пистолета",
    CurrentValue = false,
    Flag = "GunESPToggle",
    Callback = function(Value)
        getgenv().GunESPEnabled = Value
        if not Value then
            for _, obj in ipairs(Workspace:GetDescendants()) do
-               if obj.Name == "GunDrop" then
+               if obj.Name == "GunDrop" or obj.Name == "DroppedGun" then
                    if obj:FindFirstChild("GunESP") then obj.GunESP:Destroy() end
                    if obj:FindFirstChild("GunTag") then obj.GunTag:Destroy() end
                end
@@ -599,16 +596,15 @@ VisualsTab:CreateToggle({
    end,
 })
 
--- Вкладка: Игрок
 PlayerTab:CreateToggle({
-   Name = "Noclip (Сквозь стены)",
+   Name = "Noclip",
    CurrentValue = false,
    Flag = "NoclipToggle",
    Callback = function(Value) getgenv().NoclipEnabled = Value end,
 })
 
 PlayerTab:CreateSlider({
-   Name = "Скорость Бега",
+   Name = "Скорость",
    Range = {16, 120},
    Increment = 1,
    Suffix = " speed",
@@ -618,7 +614,7 @@ PlayerTab:CreateSlider({
 })
 
 PlayerTab:CreateSlider({
-   Name = "Высота Прыжка",
+   Name = "Прыжок",
    Range = {50, 200},
    Increment = 1,
    Suffix = " power",
@@ -626,105 +622,164 @@ PlayerTab:CreateSlider({
    Flag = "JumpSlider",
    Callback = function(Value) getgenv().CustomJump = Value end,
 })
+-- =================================================================
+--                CRYSTALHUB MM2 ULTIMATE EDITION
+--                           PART 4/4
+-- =================================================================
 
--- ================= РЕНДЕР И ОБНОВЛЕНИЯ =================
-
-RunService.RenderStepped:Connect(function()
-    -- Hitbox Expander
-    if getgenv().HitboxEnabled then
+-- ================= ESP ИГРОКОВ (ОПТИМИЗИРОВАННЫЙ - БЕЗ ЛАГОВ) =================
+local function updateESP()
+    if not getgenv().ESPEnabled or not getgenv().isInRound() then
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = p.Character.HumanoidRootPart
-                hrp.Size = Vector3.new(getgenv().HitboxSize, getgenv().HitboxSize, getgenv().HitboxSize)
-                hrp.Transparency = 0.7
-                hrp.Color = Color3.fromRGB(255, 0, 0)
-                hrp.CanCollide = false
+            if p.Character then
+                if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
+                if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
+                if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
+                    p.Character.Head.RoleTag:Destroy()
+                end
             end
         end
+        return
     end
 
-    -- ESP Игроков (БЕЗ НИКОВ - только роль)
-    if getgenv().ESPEnabled then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                local color = getgenv().playerRoles[p] or getgenv().COLOR_INNOCENT
-                
-                local hl = p.Character:FindFirstChild("RoleESP")
-                if not hl then
-                    hl = Instance.new("Highlight")
-                    hl.Name = "RoleESP"
-                    hl.Adornee = p.Character
-                    hl.Parent = p.Character
-                    hl.FillTransparency = 0.4
-                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                end
-                hl.FillColor = color
-                hl.OutlineColor = color
-
-                local tag = p.Character.Head:FindFirstChild("RoleTag")
-                if not tag then
-                    tag = Instance.new("BillboardGui")
-                    tag.Name = "RoleTag"
-                    tag.Size = UDim2.new(0, 80, 0, 20)
-                    tag.StudsOffset = Vector3.new(0, 2.5, 0)
-                    tag.AlwaysOnTop = true
-                    tag.Parent = p.Character.Head
-
-                    local label = Instance.new("TextLabel")
-                    label.Name = "Text"
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.TextScaled = true
-                    label.Font = Enum.Font.SourceSansBold
-                    label.Parent = tag
-                end
-
-                local roleName = "INNOCENT"
-                if color == getgenv().COLOR_MURDERER then roleName = "MURDERER" end
-                if color == getgenv().COLOR_SHERIFF then roleName = "SHERIFF" end
-
-                tag.Text.Text = roleName
-                tag.Text.TextColor3 = color
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        if not p.Character then continue end
+        
+        local hum = p.Character:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then
+            if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
+            if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
+            if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
+                p.Character.Head.RoleTag:Destroy()
             end
+            continue
         end
-    end
 
-    -- ESP Пистолета (МАЛЕНЬКАЯ ЖЁЛТАЯ НАДПИСЬ "GUN")
-    if getgenv().GunESPEnabled then
+        local color = getgenv().playerRoles[p] or getgenv().COLOR_INNOCENT
+        
+        local hl = p.Character:FindFirstChild("G_H")
+        if not hl then
+            hl = Instance.new("Highlight")
+            hl.Name = "G_H"
+            hl.Adornee = p.Character
+            hl.Parent = p.Character
+            hl.FillTransparency = 0.3
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        end
+        hl.FillColor = color
+        hl.OutlineColor = color
+
+        local tag = p.Character.Head:FindFirstChild("RoleTag")
+        if not tag then
+            tag = Instance.new("BillboardGui")
+            tag.Name = "RoleTag"
+            tag.Size = UDim2.new(0, 80, 0, 20)
+            tag.StudsOffset = Vector3.new(0, 2.5, 0)
+            tag.AlwaysOnTop = true
+            tag.Parent = p.Character.Head
+            local label = Instance.new("TextLabel")
+            label.Name = "Text"
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.TextScaled = true
+            label.Font = Enum.Font.SourceSansBold
+            label.Parent = tag
+        end
+
+        local roleName = "INNOCENT"
+        if color == getgenv().COLOR_MURDERER then roleName = "MURDERER" end
+        if color == getgenv().COLOR_SHERIFF then roleName = "SHERIFF" end
+        tag.Text.Text = roleName
+        tag.Text.TextColor3 = color
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.3) do
+        updateESP()
+    end
+end)
+
+-- ================= ESP ПИСТОЛЕТА (ОПТИМИЗИРОВАННЫЙ) =================
+local function updateGunESP()
+    if not getgenv().GunESPEnabled or not getgenv().isInRound() then
         for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj.Name == "GunDrop" and obj:IsA("BasePart") then
-                if not obj:FindFirstChild("GunESP") then
-                    local hl = Instance.new("Highlight")
-                    hl.Name = "GunESP"
-                    hl.Adornee = obj
-                    hl.Parent = obj
-                    hl.FillColor = Color3.fromRGB(255, 255, 0)
-                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    hl.FillTransparency = 0.2
-                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-
-                    local tag = Instance.new("BillboardGui")
-                    tag.Name = "GunTag"
-                    tag.Size = UDim2.new(0, 40, 0, 15)
-                    tag.StudsOffset = Vector3.new(0, 1.5, 0)
-                    tag.AlwaysOnTop = true
-                    tag.Parent = obj
-
-                    local label = Instance.new("TextLabel")
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.Text = "GUN"
-                    label.TextColor3 = Color3.fromRGB(255, 255, 0)
-                    label.TextScaled = true
-                    label.Font = Enum.Font.SourceSansBold
-                    label.Parent = tag
-                end
+            if obj.Name == "GunDrop" or obj.Name == "DroppedGun" then
+                if obj:FindFirstChild("GunESP") then obj.GunESP:Destroy() end
+                if obj:FindFirstChild("GunTag") then obj.GunTag:Destroy() end
             end
+        end
+        return
+    end
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if (obj.Name == "GunDrop" or obj.Name == "DroppedGun") and obj:IsA("BasePart") then
+            if not obj:FindFirstChild("GunESP") then
+                local hl = Instance.new("Highlight")
+                hl.Name = "GunESP"
+                hl.Adornee = obj
+                hl.Parent = obj
+                hl.FillColor = Color3.fromRGB(255, 255, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.FillTransparency = 0.1
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
+                local tag = Instance.new("BillboardGui")
+                tag.Name = "GunTag"
+                tag.Size = UDim2.new(0, 40, 0, 15)
+                tag.StudsOffset = Vector3.new(0, 1.5, 0)
+                tag.AlwaysOnTop = true
+                tag.Parent = obj
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(1, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = "🔫 GUN"
+                label.TextColor3 = Color3.fromRGB(255, 255, 0)
+                label.TextScaled = true
+                label.Font = Enum.Font.SourceSansBold
+                label.Parent = tag
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        updateGunESP()
+    end
+end)
+
+-- ================= АВТО-ПОДБОР ПИСТОЛЕТА =================
+task.spawn(function()
+    while task.wait(0.15) do
+        if not getgenv().AutoGrabGunEnabled then continue end
+        if not getgenv().isInRound() or not getgenv().isAlive() then continue end
+        
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+        
+        local gunDrop = nil
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if (obj.Name == "GunDrop" or obj.Name == "DroppedGun") and obj:IsA("BasePart") then
+                gunDrop = obj
+                break
+            end
+        end
+        
+        if gunDrop then
+            local hrp = char.HumanoidRootPart
+            local oldCF = hrp.CFrame
+            hrp.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
+            task.wait(0.15)
+            hrp.CFrame = oldCF
+            Rayfield:Notify({ Title = "CrystalHub", Content = "🔫 Пистолет подобран!", Duration = 2 })
+            task.wait(0.5)
         end
     end
 end)
 
--- Управление физикой игрока
+-- ================= УПРАВЛЕНИЕ ФИЗИКОЙ =================
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if char then
@@ -741,70 +796,84 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Логика Автофарма
+-- ================= АВТОФАРМ (ТОЛЬКО В РАУНДЕ И ЖИВ) =================
 task.spawn(function()
     while true do
         task.wait(0.1)
-        if getgenv().AutoFarmEnabled then
-            if not getgenv().isInRound() then
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.PlatformStand = false
-                end
-                if getgenv().currentTween then getgenv().currentTween:Cancel() end
+        if getgenv().AutoFarmEnabled and getgenv().isInRound() and getgenv().isAlive() then
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then
                 continue
             end
+            
+            local hrp = char.HumanoidRootPart
+            local humanoid = char.Humanoid
+            
+            local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+            local murdPos = nil
+            if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
+                murdPos = murderer.Character.HumanoidRootPart.Position
+            end
 
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-                local hrp = char.HumanoidRootPart
-                local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-                local murdPos = (murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")) and murderer.Character.HumanoidRootPart.Position
-
-                local closestCoin = nil
-                local shortestDist = math.huge
-
-                for _, obj in ipairs(Workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and (obj.Name:lower():find("coin") or obj.Name:lower():find("монет")) then
-                        local isSafe = true
-                        if getgenv().SmartFarm and murdPos then
-                            if (obj.Position - murdPos).Magnitude < 25 then
-                                isSafe = false
-                            end
-                        end
-
-                        if isSafe then
-                            local dist = (hrp.Position - obj.Position).Magnitude
-                            if dist < shortestDist then
-                                shortestDist = dist
-                                closestCoin = obj
-                            end
+            local bestCoin = nil
+            local bestDist = math.huge
+            
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Name:lower():find("coin") or obj.Name:lower():find("монет")) then
+                    if getgenv().SmartFarm and murdPos then
+                        if (obj.Position - murdPos).Magnitude < 30 then                            continue
                         end
                     end
-                end
-
-                if closestCoin then
-                    char.Humanoid.PlatformStand = true
-                    local dist = (closestCoin.Position - hrp.Position).Magnitude
-                    local time = dist / (getgenv().FarmSpeed or 30)
-
-                    if time > 0.05 then
-                        if getgenv().currentTween then getgenv().currentTween:Cancel() end
-                        getgenv().currentTween = TweenService:Create(hrp, TweenInfo.new(time, Enum.EasingStyle.Linear), {CFrame = CFrame.new(closestCoin.Position)})
-                        getgenv().currentTween:Play()
-
-                        local elapsed = 0
-                        while elapsed < time and getgenv().AutoFarmEnabled and closestCoin and closestCoin.Parent and getgenv().isInRound() do
-                            task.wait(0.05)
-                            elapsed = elapsed + 0.05
-                        end
+                    
+                    local dist = (hrp.Position - obj.Position).Magnitude
+                    if dist < bestDist then
+                        bestDist = dist
+                        bestCoin = obj
                     end
-                else
-                    char.Humanoid.PlatformStand = false
-                    if getgenv().currentTween then getgenv().currentTween:Cancel() end
                 end
+            end
+
+            if bestCoin then
+                humanoid.PlatformStand = true
+                getgenv().isFarming = true
+                
+                hrp.CFrame = CFrame.new(bestCoin.Position)
+                task.wait()
+                
+                local flyDirection = (hrp.Position - (murdPos or Vector3.new(0, 0, 0))).Unit
+                if flyDirection.Magnitude < 0.1 then
+                    flyDirection = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1)).Unit
+                end                
+                hrp.CFrame = hrp.CFrame + (flyDirection * 10)
+                humanoid.PlatformStand = false
+                getgenv().isFarming = false
+                
+                task.wait(0.05)
+            else
+                humanoid.PlatformStand = false
+                if getgenv().currentTween then getgenv().currentTween:Cancel() end
+                getgenv().isFarming = false
+                task.wait(0.5)
+            end
+        else
+            task.wait(0.5)
+        end
+    end
+end)
+
+-- ================= ХИТБОКСЫ =================
+RunService.RenderStepped:Connect(function()
+    if getgenv().HitboxEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = p.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(getgenv().HitboxSize, getgenv().HitboxSize, getgenv().HitboxSize)
+                hrp.Transparency = 0.7
+                hrp.Color = Color3.fromRGB(255, 0, 0)
+                hrp.CanCollide = false
             end
         end
     end
 end)
 
-print("CrystalHub MM2 Ultimate - Loaded!")
+print("CrystalHub MM2 Ultimate - Fully Loaded!")
