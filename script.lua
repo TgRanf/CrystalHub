@@ -157,10 +157,10 @@ getgenv().getPlayerByRole = function(roleColor)
 end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 2/4
+--                           PART 2/4 (ОРИГИНАЛЫ)
 -- =================================================================
 
--- ================= SILENT AIM (ИЗ STEFANUK12) =================
+-- ================= SILENT AIM (ОРИГИНАЛ ИЗ STEFANUK12) =================
 local ValiantAimHacks = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Stefanuk12/ROBLOX/master/Universal/Experimental%20Silent%20Aim%20Module.lua"))()
 
 ValiantAimHacks.SilentAimEnabled = false
@@ -171,7 +171,7 @@ ValiantAimHacks.VisibleCheck = true
 ValiantAimHacks.TeamCheck = false
 ValiantAimHacks.TargetPart = {"Head", "HumanoidRootPart"}
 
--- Перехват для Silent Aim
+-- Перехват для Silent Aim (оригинал из Stefanuk12)
 local mt = getrawmetatable(game)
 local backupIndex = mt.__index
 local backupNamecall = mt.__namecall
@@ -232,7 +232,7 @@ task.spawn(function()
     end
 end)
 
--- ================= ФЛИНГ (ИЗ JOSHCLARK756) =================
+-- ================= FLING (ОРИГИНАЛ ИЗ JOSHCLARK756) =================
 local teleportEnabled = false
 local velocityEnabled = false
 
@@ -380,7 +380,7 @@ getgenv().flingTarget = function(targetPlayer)
     Rayfield:Notify({ Title = "CrystalHub", Content = "Fling completed!", Duration = 2 })
 end
 
--- ================= SHOT BUTTON (ИЗ MARSINSANITY) =================
+-- ================= SHOT BUTTON (ОРИГИНАЛ ИЗ MARSINSANITY) =================
 local ShotGui = nil
 getgenv().toggleShotButton = function(state)
     if state then
@@ -443,7 +443,7 @@ getgenv().toggleShotButton = function(state)
     end
 end
 
--- ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ИЗ MARSINSANITY) =================
+-- ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ОРИГИНАЛ ИЗ MARSINSANITY) =================
 local function antiLag()
     for _, v in ipairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
