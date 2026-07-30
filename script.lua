@@ -1,11 +1,6 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---            Based on your original sources:
---            - ESP: Murder_Mystery_2-simple_ESP
---            - Silent Aim: Stefanuk12
---            - AutoFarm: MarsInsanity + ZenosScript
---            - Fling: joshclark756
---            - Kill Murderer/All: MarsInsanity
+--            Based on your original sources + Zyn-ic Octree Farm
 --                           PART 1/4
 -- =================================================================
 
@@ -15,7 +10,7 @@ local Window = Rayfield:CreateWindow({
    Name = "CrystalHub | MM2 Ultimate",
    Icon = 0,
    LoadingTitle = "CrystalHub MM2",
-   LoadingSubtitle = "Powered by Your Sources",
+   LoadingSubtitle = "Powered by Zyn-ic Octree",
    Theme = "Default",
    DisableRayfieldPrompts = false,
    DisableBuildWarnings = false,
@@ -43,12 +38,12 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
 
--- Автофарм
+-- Автофарм (Zyn-ic)
 getgenv().AutoFarmEnabled = false
 getgenv().FarmSpeed = 30
 getgenv().SmartFarm = true
-getgenv().currentTween = nil
 getgenv().isFarming = false
+getgenv().farmRadius = 200
 
 -- Визуалы & Персонаж
 getgenv().ESPEnabled = false
@@ -174,7 +169,6 @@ ValiantAimHacks.VisibleCheck = true
 ValiantAimHacks.TeamCheck = false
 ValiantAimHacks.TargetPart = {"Head", "HumanoidRootPart"}
 
--- Подключаем к интерфейсу
 SilentTab:CreateToggle({
    Name = "Silent Aim (Knife/Gun)",
    CurrentValue = false,
@@ -230,7 +224,6 @@ SilentTab:CreateToggle({
    end,
 })
 
--- Перехват для Silent Aim
 local mt = getrawmetatable(game)
 local backupIndex = mt.__index
 local backupNamecall = mt.__namecall
@@ -291,7 +284,7 @@ task.spawn(function()
     end
 end)
 
--- ================= SHOT BUTTON (ИЗ MARSINSANITY, БЕЗ ЭМОДЗИ) =================
+-- ================= SHOT BUTTON =================
 local ShotGui = nil
 getgenv().toggleShotButton = function(state)
     if state then
@@ -353,7 +346,7 @@ getgenv().toggleShotButton = function(state)
     end
 end
 
--- ================= KILL MURDERER (ИЗ MARSINSANITY) =================
+-- ================= KILL MURDERER =================
 local function GetMurderer()
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= LocalPlayer then
@@ -367,128 +360,6 @@ local function GetMurderer()
     end
     return nil
 end
-
--- ================= ФЛИНГ (ИЗ JOSHCLARK756) =================
-local flingEnabled = false
-local velocityEnabled = false
-local flingTargetPlayer = nil
-
-local function getRoot(char)
-    return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
-end
-
-local function teleportHandleToPart(part)
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool then
-        local bp = LocalPlayer:FindFirstChild("Backpack")
-        if bp then
-            tool = bp:FindFirstChildOfClass("Tool")
-            if tool then
-                char.Humanoid:EquipTool(tool)
-                task.wait(0.1)
-                tool = char:FindFirstChildOfClass("Tool")
-            end
-        end
-    end
-    
-    if not tool then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "No tool!", Duration = 2 })
-        return
-    end
-    
-    local handle = tool:FindFirstChild("Handle")
-    if not handle then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "No Handle!", Duration = 2 })
-        return
-    end
-    
-    local originalCF = handle.CFrame
-    handle.CFrame = part.CFrame
-    task.wait(0.05)
-    handle.CFrame = originalCF
-end
-
-local function teleportHandleToPlayer(player)
-    if not player or not player.Character then return end
-    for _, part in ipairs(player.Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            teleportHandleToPart(part)
-            task.wait(0.02)
-        end
-    end
-end
-
-local function isPlayerAlive(player)
-    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-    return humanoid and humanoid.Health > 0
-end
-
-local function velocityBypasser()
-    while true do
-        if velocityEnabled and flingTargetPlayer then
-            RunService.Heartbeat:Wait()
-            local character = LocalPlayer.Character
-            local root = getRoot(character)
-            local vel, movel = nil, 0.1
-
-            while velocityEnabled and flingTargetPlayer and not (character and character.Parent and root and root.Parent) do
-                RunService.Heartbeat:Wait()
-                character = LocalPlayer.Character
-                root = getRoot(character)
-            end
-
-            if not velocityEnabled or not flingTargetPlayer then return end
-
-            vel = root.Velocity
-            root.Velocity = vel * 1000000 + Vector3.new(0, 1000000, 0)
-
-            RunService.RenderStepped:Wait()
-            if velocityEnabled and flingTargetPlayer and character and character.Parent and root and root.Parent then
-                root.Velocity = vel
-            end
-
-            RunService.Stepped:Wait()
-            if velocityEnabled and flingTargetPlayer and character and character.Parent and root and root.Parent then
-                root.Velocity = vel + Vector3.new(0, movel, 0)
-                movel = movel * -1
-            end
-        else
-            task.wait(0.1)
-        end
-    end
-end
-
-local function runHandleFling(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Target not found!", Duration = 2 })
-        return
-    end
-    
-    if not isPlayerAlive(targetPlayer) then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Target is dead!", Duration = 2 })
-        return
-    end
-    
-    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    local initialVelocity = hrp.Velocity.Magnitude or 0
-    local attempts = 0
-    
-    while flingEnabled and targetPlayer and targetPlayer.Parent and isPlayerAlive(targetPlayer) and (hrp.Velocity.Magnitude - initialVelocity) < 50 and attempts < 50 do
-        teleportHandleToPlayer(targetPlayer)
-        task.wait(0.1)
-        hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        attempts = attempts + 1
-    end
-    
-    Rayfield:Notify({ Title = "CrystalHub", Content = "Fling completed!", Duration = 2 })
-end
-
-coroutine.wrap(velocityBypasser)()
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 3/4
@@ -496,7 +367,6 @@ coroutine.wrap(velocityBypasser)()
 
 -- ================= ИНТЕРФЕЙС ЭЛЕМЕНТЫ =================
 
--- Вкладка: Combat
 CombatTab:CreateToggle({
    Name = "Auto Grab Gun",
    CurrentValue = false,
@@ -559,76 +429,6 @@ CombatTab:CreateButton({
 })
 
 CombatTab:CreateButton({
-   Name = "Velocity Fling Murderer",
-   Callback = function()
-       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-       if not m then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
-           return
-       end
-       
-       flingTargetPlayer = m
-       velocityEnabled = true
-       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling activated!", Duration = 2 })
-       
-       task.wait(2)
-       velocityEnabled = false
-       flingTargetPlayer = nil
-       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling completed!", Duration = 2 })
-   end,
-})
-
-CombatTab:CreateButton({
-   Name = "Handle Fling Murderer",
-   Callback = function()
-       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-       if not m then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
-           return
-       end
-       
-       flingEnabled = true
-       runHandleFling(m)
-       flingEnabled = false
-   end,
-})
-
-CombatTab:CreateButton({
-   Name = "Velocity Fling Sheriff",
-   Callback = function()
-       local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
-       if not s then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
-           return
-       end
-       
-       flingTargetPlayer = s
-       velocityEnabled = true
-       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling activated!", Duration = 2 })
-       
-       task.wait(2)
-       velocityEnabled = false
-       flingTargetPlayer = nil
-       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling completed!", Duration = 2 })
-   end,
-})
-
-CombatTab:CreateButton({
-   Name = "Handle Fling Sheriff",
-   Callback = function()
-       local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
-       if not s then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
-           return
-       end
-       
-       flingEnabled = true
-       runHandleFling(s)
-       flingEnabled = false
-   end,
-})
-
-CombatTab:CreateToggle({
    Name = "Show Shot Button",
    CurrentValue = false,
    Flag = "AutoShotToggle",
@@ -637,7 +437,7 @@ CombatTab:CreateToggle({
 
 -- Вкладка: Auto Farm
 FarmTab:CreateToggle({
-   Name = "Auto Farm Coins",
+   Name = "Auto Farm (Zyn-ic Octree)",
    CurrentValue = false,
    Flag = "AutoFarmToggle",
    Callback = function(Value)
@@ -646,7 +446,6 @@ FarmTab:CreateToggle({
            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                LocalPlayer.Character.Humanoid.PlatformStand = false
            end
-           if getgenv().currentTween then getgenv().currentTween:Cancel() end
            getgenv().isFarming = false
        end
    end,
@@ -669,7 +468,17 @@ FarmTab:CreateSlider({
    Callback = function(Value) getgenv().FarmSpeed = Value end,
 })
 
--- ================= ТЕЛЕПОРТЫ (ИЗ MARSINSANITY, БЕЗ ЭМОДЗИ) =================
+FarmTab:CreateSlider({
+   Name = "Search Radius",
+   Range = {100, 300},
+   Increment = 10,
+   Suffix = " studs",
+   CurrentValue = 200,
+   Flag = "FarmRadiusSlider",
+   Callback = function(Value) getgenv().farmRadius = Value end,
+})
+
+-- ================= ТЕЛЕПОРТЫ =================
 TeleportTab:CreateButton({
    Name = "TP to Lobby",
    Callback = function()
@@ -736,12 +545,8 @@ TeleportTab:CreateTextBox({
        Rayfield:Notify({ Title = "CrystalHub", Content = "Player not found!", Duration = 2 })
    end,
 })
--- =================================================================
---                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 4/4
--- =================================================================
 
--- Вкладка: Visuals
+-- ================= ВИЗУАЛЫ =================
 VisualsTab:CreateToggle({
    Name = "ESP Roles (Box)",
    CurrentValue = false,
@@ -779,7 +584,7 @@ VisualsTab:CreateToggle({
    end,
 })
 
--- Вкладка: Player
+-- ================= ИГРОК =================
 PlayerTab:CreateToggle({
    Name = "Noclip",
    CurrentValue = false,
@@ -806,8 +611,12 @@ PlayerTab:CreateSlider({
    Flag = "JumpSlider",
    Callback = function(Value) getgenv().CustomJump = Value end,
 })
+-- =================================================================
+--                CRYSTALHUB MM2 ULTIMATE EDITION
+--                           PART 4/4
+-- =================================================================
 
--- ================= ESP (ИЗ MURDER_MYSTERY_2-SIMPLE_ESP) =================
+-- ================= ESP =================
 local function createESP(player)
     if player == LocalPlayer then return end
     if not player.Character or not player.Character:FindFirstChild("Head") then return end
@@ -952,80 +761,159 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ================= ПЛАВНЫЙ ПОЛЁТ (ИЗ ZENOSSCRIPT) =================
-local function flyToPosition(targetPos)
+-- ================= АВТОФАРМ (ZYN-IC OCTREE) =================
+local farmThread = nil
+local farmRunning = false
+
+local function getCoinContainer()
+    for _, v in Workspace:GetDescendants() do
+        if v:IsA("Model") and v.Name == "Base" then
+            return v.Parent:FindFirstChild("CoinContainer")
+        end
+    end
+    return nil
+end
+
+local function moveToPositionSmooth(targetPos, duration)
     local char = LocalPlayer.Character
     if not char then return end
     
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bv.P = 9e4
-    bv.Parent = hrp
-    
-    local bg = Instance.new("BodyGyro")
-    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.P = 9e4
-    bg.Parent = hrp
-    
-    local distance = (targetPos - hrp.Position).Magnitude
-    local speed = math.min(distance / 0.3, 60)
-    
+    local startPos = hrp.Position
     local startTime = tick()
-    while (hrp.Position - targetPos).Magnitude > 2 and tick() - startTime < 5 do
-        local direction = (targetPos - hrp.Position).Unit
-        bv.Velocity = direction * speed
-        bg.CFrame = CFrame.lookAt(hrp.Position, targetPos)
+    
+    while tick() - startTime < duration do
+        local alpha = (tick() - startTime) / duration
+        local currentPos = startPos:Lerp(targetPos, alpha)
+        hrp.CFrame = CFrame.new(currentPos)
         task.wait()
     end
     
-    bv:Destroy()
-    bg:Destroy()
+    hrp.CFrame = CFrame.new(targetPos)
 end
 
--- ================= АВТОФАРМ (ИЗ MARSINSANITY + ZENOSSCRIPT) =================
-task.spawn(function()
-    while true do
-        task.wait(0.25)
-        if getgenv().AutoFarmEnabled and getgenv().isInRound() and getgenv().isAlive() then
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") then
-                continue
+local function startZynicFarm()
+    if farmRunning then return end
+    farmRunning = true
+    
+    local coinContainer = getCoinContainer()
+    if not coinContainer then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "CoinContainer not found!", Duration = 3 })
+        farmRunning = false
+        return
+    end
+    
+    -- Загружаем Octree
+    local Octree = loadstring(game:HttpGet("https://raw.githubusercontent.com/Sleitnick/rbxts-octo-tree/main/src/init.lua", true))()
+    local octree = Octree.new()
+    local touchedCoins = {}
+    local connections = {}
+    
+    local function markCoinTouched(coin)
+        touchedCoins[coin] = true
+        local node = octree:FindFirstNode(coin)
+        if node then
+            octree:RemoveNode(node)
+        end
+    end
+    
+    local function setupTracking(coin)
+        if touchedCoins[coin] then return end
+        
+        local touchInterest = coin:FindFirstChildWhichIsA("TouchTransmitter")
+        if touchInterest then
+            local conn = touchInterest.AncestryChanged:Connect(function(_, parent)
+                if parent == nil then
+                    markCoinTouched(coin)
+                end
+            end)
+            table.insert(connections, conn)
+        end
+        
+        local posConn = coin:GetPropertyChangedSignal("Position"):Connect(function()
+            if coin.Position.Y ~= coin:GetAttribute("LastY") then
+                markCoinTouched(coin)
+                coin:Destroy()
             end
-            
-            local hrp = char.HumanoidRootPart
-            
-            local bestCoin = nil
-            local bestDist = math.huge
-            
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and (obj.Name:lower():find("coin") or obj.Name:lower():find("монет")) then
-                    if getgenv().SmartFarm then
-                        local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-                        if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
-                            local murdPos = murderer.Character.HumanoidRootPart.Position
-                            if (obj.Position - murdPos).Magnitude < 30 then
-                                continue
-                            end
-                        end
-                    end
-                    
-                    local dist = (hrp.Position - obj.Position).Magnitude
-                    if dist < bestDist then
-                        bestDist = dist
-                        bestCoin = obj
-                    end
+        end)
+        coin:SetAttribute("LastY", coin.Position.Y)
+        table.insert(connections, posConn)
+    end
+    
+    local function populateOctree()
+        octree:ClearAllNodes()
+        for _, descendant in pairs(coinContainer:GetDescendants()) do
+            if descendant:IsA("TouchTransmitter") then
+                local coin = descendant.Parent
+                if not touchedCoins[coin] then
+                    octree:CreateNode(coin.Position, coin)
+                    setupTracking(coin)
                 end
             end
-            
-            if bestCoin then
-                flyToPosition(bestCoin.Position)
-                task.wait(0.1)
+        end
+    end
+    
+    populateOctree()
+    
+    local waypoint = LocalPlayer.Character:GetPivot()
+    
+    while getgenv().AutoFarmEnabled and getgenv().isAlive() and getgenv().isInRound() do
+        local char = LocalPlayer.Character
+        if not char then break end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then break end
+        
+        local radius = getgenv().farmRadius or 200
+        local nearestNode = octree:GetNearest(hrp.Position, radius, 1)[1]
+        
+        if nearestNode then
+            local coin = nearestNode.Object
+            if not touchedCoins[coin] then
+                local distance = (hrp.Position - coin.Position).Magnitude
+                local duration = distance / (getgenv().FarmSpeed or 30)
+                
+                moveToPositionSmooth(coin.Position, duration)
+                markCoinTouched(coin)
+                task.wait(0.2)
             end
         else
-            task.wait(0.5)
+            task.wait(1)
+        end
+    end
+    
+    -- Очистка
+    for _, conn in pairs(connections) do
+        if conn and conn.Connected then
+            conn:Disconnect()
+        end
+    end
+    octree:ClearAllNodes()
+    
+    if getgenv().AutoFarmEnabled then
+        LocalPlayer.Character:PivotTo(waypoint)
+    end
+    
+    farmRunning = false
+end
+
+-- Запуск автофарма в отдельном потоке
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if getgenv().AutoFarmEnabled and getgenv().isAlive() and getgenv().isInRound() then
+            if not farmRunning then
+                farmThread = coroutine.create(startZynicFarm)
+                coroutine.resume(farmThread)
+            end
+        elseif farmRunning then
+            farmRunning = false
+            if farmThread then
+                coroutine.close(farmThread)
+                farmThread = nil
+            end
         end
     end
 end)
