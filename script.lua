@@ -1,31 +1,29 @@
-local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/main/WindUI"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window = WindUI:CreateWindow({
-    Title = "CrystalHub | MM2 Ultimate",
-    Icon = "sparkles",
-    Author = "Mobile & PC Edition",
-    Folder = "CrystalHub",
-    Size = UDim2.fromOffset(520, 360),
-    Transparent = true,
-    Theme = "Dark",
-    SideBarWidth = 150,
-    HasOutline = true
+local Window = Rayfield:CreateWindow({
+   Name = "CrystalHub | MM2 Ultimate",
+   Icon = 0,
+   LoadingTitle = "CrystalHub MM2",
+   LoadingSubtitle = "Mobile & PC Edition",
+   Theme = "Default",
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+
+   ConfigurationSaving = {
+      Enabled = false,
+      FolderName = "CrystalHub",
+      FileName = "MM2Config"
+   },
+
+   KeySystem = false
 })
 
-Window:AddOpenButton({
-    Title = "CrystalHub",
-    Icon = "sparkles",
-    CornerRadius = UDim.new(0, 10),
-    StrokeThickness = 2,
-    Color = ColorSequence.new(Color3.fromRGB(147, 51, 234), Color3.fromRGB(79, 70, 229))
-})
-
-local Tabs = {
-    Combat = Window:Tab({ Title = "Бой", Icon = "swords" }),
-    Farm = Window:Tab({ Title = "Автофарм", Icon = "coins" }),
-    Visuals = Window:Tab({ Title = "Визуалы", Icon = "eye" }),
-    Player = Window:Tab({ Title = "Игрок", Icon = "user" })
-}
+-- Вкладки
+local CombatTab = Window:CreateTab("Бой", 4483362458)
+local FarmTab = Window:CreateTab("Автофарм", 4483362458)
+local VisualsTab = Window:CreateTab("Визуалы", 4483362458)
+local PlayerTab = Window:CreateTab("Игрок", 4483362458)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -35,6 +33,7 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
+-- Глобальные настройки
 getgenv().AimbotEnabled = false
 getgenv().VisibleCheckEnabled = true
 getgenv().AimbotFOV = 130
@@ -50,6 +49,7 @@ getgenv().NoclipEnabled = false
 getgenv().CustomSpeed = 16
 getgenv().CustomJump = 50
 
+-- Логика игры
 getgenv().isInRound = function()
     for _, obj in ipairs(Workspace:GetChildren()) do
         if obj:FindFirstChild("CoinContainer") or obj:FindFirstChild("Spawns") or obj.Name == "Map" then
@@ -158,7 +158,7 @@ getgenv().toggleShotButton = function(state)
 
             btn.MouseButton1Click:Connect(function()
                 if not getgenv().isInRound() then
-                    WindUI:Notify({ Title = "CrystalHub", Content = "Функция недоступна в лобби!", Duration = 3 })
+                    Rayfield:Notify({ Title = "CrystalHub", Content = "Функция недоступна в лобби!", Duration = 3 })
                     return
                 end
 
@@ -179,10 +179,10 @@ getgenv().toggleShotButton = function(state)
                     if tool then
                         Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
                         tool:Activate()
-                        WindUI:Notify({ Title = "CrystalHub", Content = "Пуля выпущена в Убийцу!", Duration = 2 })
+                        Rayfield:Notify({ Title = "CrystalHub", Content = "Пуля выпущена в Убийцу!", Duration = 2 })
                     end
                 else
-                    WindUI:Notify({ Title = "CrystalHub", Content = "Убийца не найден!", Duration = 2 })
+                    Rayfield:Notify({ Title = "CrystalHub", Content = "Убийца не найден!", Duration = 2 })
                 end
             end)
         end
@@ -194,12 +194,12 @@ end
 
 getgenv().flingTarget = function(targetPlayer)
     if not getgenv().isInRound() then
-        WindUI:Notify({ Title = "CrystalHub", Content = "Нельзя использовать в Лобби!", Duration = 3 })
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Нельзя использовать в Лобби!", Duration = 3 })
         return
     end
 
     if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        WindUI:Notify({ Title = "CrystalHub", Content = "Цель не найдена!", Duration = 3 })
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Цель не найдена!", Duration = 3 })
         return
     end
 
@@ -234,12 +234,12 @@ getgenv().flingTarget = function(targetPlayer)
         if part:IsA("BasePart") then part.CanCollide = true end
     end
 
-    WindUI:Notify({ Title = "CrystalHub", Content = "Цель успешно выброшена!", Duration = 3 })
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Цель успешно выброшена!", Duration = 3 })
 end
 
 getgenv().autoGrabGun = function()
     if not getgenv().isInRound() then
-        WindUI:Notify({ Title = "CrystalHub", Content = "Вы находитесь в лобби!", Duration = 3 })
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Вы находитесь в лобби!", Duration = 3 })
         return
     end
 
@@ -252,7 +252,7 @@ getgenv().autoGrabGun = function()
     end
 
     if not gunDrop then
-        WindUI:Notify({ Title = "CrystalHub", Content = "Выпавший пистолет не найден!", Duration = 3 })
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Выпавший пистолет не найден!", Duration = 3 })
         return
     end
 
@@ -262,7 +262,7 @@ getgenv().autoGrabGun = function()
         hrp.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
         task.wait(0.2)
         hrp.CFrame = oldCFrame
-        WindUI:Notify({ Title = "CrystalHub", Content = "Пистолет подобран!", Duration = 3 })
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Пистолет подобран!", Duration = 3 })
     end
 end
 
@@ -318,129 +318,170 @@ getgenv().getClosestInFOV = function()
     return closestTarget
 end
 
--- Создание интерфейса
-Tabs.Combat:AddToggle({
-    Title = "Отображать кнопку Auto-Shot (🎯)",
-    Default = false,
-    Callback = function(Value) getgenv().toggleShotButton(Value) end
+-- ================= ИНТЕРФЕЙС RAYFIELD =================
+
+-- Вкладка: Бой
+CombatTab:CreateToggle({
+   Name = "Отображать кнопку Auto-Shot (🎯)",
+   CurrentValue = false,
+   Flag = "AutoShotToggle",
+   Callback = function(Value)
+       getgenv().toggleShotButton(Value)
+   end,
 })
 
-Tabs.Combat:AddButton({
-    Title = "Авто-подбор Пистолета (Auto-Grab Gun)",
-    Desc = "Телепортирует к выпавшему песту и возвращает назад",
-    Callback = function() getgenv().autoGrabGun() end
+CombatTab:CreateButton({
+   Name = "Авто-подбор Пистолета (Auto-Grab Gun)",
+   Callback = function()
+       getgenv().autoGrabGun()
+   end,
 })
 
-Tabs.Combat:AddButton({
-    Title = "Флинг Убийцы (Fling Murderer)",
-    Callback = function()
-        local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-        getgenv().flingTarget(m)
-    end
+CombatTab:CreateButton({
+   Name = "Флинг Убийцы (Fling Murderer)",
+   Callback = function()
+       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+       getgenv().flingTarget(m)
+   end,
 })
 
-Tabs.Combat:AddButton({
-    Title = "Флинг Шерифа (Fling Sheriff)",
-    Callback = function()
-        local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
-        getgenv().flingTarget(s)
-    end
+CombatTab:CreateButton({
+   Name = "Флинг Шерифа (Fling Sheriff)",
+   Callback = function()
+       local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
+       getgenv().flingTarget(s)
+   end,
 })
 
-Tabs.Combat:AddToggle({
-    Title = "Включить Аимбот",
-    Default = false,
-    Callback = function(Value) getgenv().AimbotEnabled = Value end
+CombatTab:CreateToggle({
+   Name = "Включить Аимбот",
+   CurrentValue = false,
+   Flag = "AimbotToggle",
+   Callback = function(Value)
+       getgenv().AimbotEnabled = Value
+   end,
 })
 
-Tabs.Combat:AddToggle({
-    Title = "Проверка стен (Visible Check)",
-    Default = true,
-    Callback = function(Value) getgenv().VisibleCheckEnabled = Value end
+CombatTab:CreateToggle({
+   Name = "Проверка стен (Visible Check)",
+   CurrentValue = true,
+   Flag = "VisibleCheckToggle",
+   Callback = function(Value)
+       getgenv().VisibleCheckEnabled = Value
+   end,
 })
 
-Tabs.Combat:AddDropdown({
-    Title = "Цель аимбота (Кого атаковать)",
-    Values = {"Все", "Только Убийца", "Только Шериф"},
-    Default = "Все",
-    Callback = function(Value) getgenv().AimbotTargetMode = Value end
+CombatTab:CreateDropdown({
+   Name = "Цель аимбота (Кого атаковать)",
+   Options = {"Все", "Только Убийца", "Только Шериф"},
+   CurrentOption = {"Все"},
+   MultipleOptions = false,
+   Flag = "AimbotTargetDropdown",
+   Callback = function(Option)
+       local selected = type(Option) == "table" and Option[1] or Option
+       getgenv().AimbotTargetMode = selected
+   end,
 })
 
-Tabs.Combat:AddSlider({
-    Title = "Радиус захвата FOV",
-    Min = 50,
-    Max = 300,
-    Default = 130,
-    Callback = function(Value) getgenv().AimbotFOV = Value end
+CombatTab:CreateSlider({
+   Name = "Радиус захвата FOV",
+   Range = {50, 300},
+   Increment = 5,
+   Suffix = " px",
+   CurrentValue = 130,
+   Flag = "AimbotFOVSlider",
+   Callback = function(Value)
+       getgenv().AimbotFOV = Value
+   end,
 })
 
-Tabs.Farm:AddToggle({
-    Title = "Включить Автофарм Монет",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoFarmEnabled = Value
-        if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.PlatformStand = false
-            if getgenv().currentTween then getgenv().currentTween:Cancel() end
-        end
-    end
+-- Вкладка: Автофарм
+FarmTab:CreateToggle({
+   Name = "Включить Автофарм Монет",
+   CurrentValue = false,
+   Flag = "AutoFarmToggle",
+   Callback = function(Value)
+       getgenv().AutoFarmEnabled = Value
+       if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+           LocalPlayer.Character.Humanoid.PlatformStand = false
+           if getgenv().currentTween then getgenv().currentTween:Cancel() end
+       end
+   end,
 })
 
-Tabs.Farm:AddSlider({
-    Title = "Скорость фарма",
-    Min = 15,
-    Max = 50,
-    Default = 30,
-    Callback = function(Value) getgenv().FarmSpeed = Value end
+FarmTab:CreateSlider({
+   Name = "Скорость фарма",
+   Range = {15, 50},
+   Increment = 1,
+   Suffix = " speed",
+   CurrentValue = 30,
+   Flag = "FarmSpeedSlider",
+   Callback = function(Value)
+       getgenv().FarmSpeed = Value
+   end,
 })
 
-Tabs.Visuals:AddToggle({
-    Title = "Включить ESP (Мгновенные Роли)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().ESPEnabled = Value
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                if Value then
-                    if not p.Character:FindFirstChild("RoleESP") then
-                        local hl = Instance.new("Highlight")
-                        hl.Name = "RoleESP"
-                        hl.Adornee = p.Character
-                        hl.Parent = p.Character
-                        hl.FillTransparency = 0.5
-                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                    end
-                else
-                    if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
-                end
-            end
-        end
-    end
+-- Вкладка: Визуалы
+VisualsTab:CreateToggle({
+   Name = "Включить ESP (Мгновенные Роли)",
+   CurrentValue = false,
+   Flag = "ESPToggle",
+   Callback = function(Value)
+       getgenv().ESPEnabled = Value
+       for _, p in ipairs(Players:GetPlayers()) do
+           if p ~= LocalPlayer and p.Character then
+               if Value then
+                   if not p.Character:FindFirstChild("RoleESP") then
+                       local hl = Instance.new("Highlight")
+                       hl.Name = "RoleESP"
+                       hl.Adornee = p.Character
+                       hl.Parent = p.Character
+                       hl.FillTransparency = 0.5
+                       hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                   end
+               else
+                   if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
+               end
+           end
+       end
+   end,
 })
 
-Tabs.Player:AddToggle({
-    Title = "Noclip (Сквозь стены)",
-    Default = false,
-    Callback = function(Value) getgenv().NoclipEnabled = Value end
+-- Вкладка: Игрок
+PlayerTab:CreateToggle({
+   Name = "Noclip (Сквозь стены)",
+   CurrentValue = false,
+   Flag = "NoclipToggle",
+   Callback = function(Value)
+       getgenv().NoclipEnabled = Value
+   end,
 })
 
-Tabs.Player:AddSlider({
-    Title = "Скорость Бега",
-    Min = 16,
-    Max = 120,
-    Default = 16,
-    Callback = function(Value) getgenv().CustomSpeed = Value end
+PlayerTab:CreateSlider({
+   Name = "Скорость Бега",
+   Range = {16, 120},
+   Increment = 1,
+   Suffix = " speed",
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+       getgenv().CustomSpeed = Value
+   end,
 })
 
-Tabs.Player:AddSlider({
-    Title = "Высота Прыжка",
-    Min = 50,
-    Max = 200,
-    Default = 50,
-    Callback = function(Value) getgenv().CustomJump = Value end
+PlayerTab:CreateSlider({
+   Name = "Высота Прыжка",
+   Range = {50, 200},
+   Increment = 1,
+   Suffix = " power",
+   CurrentValue = 50,
+   Flag = "JumpSlider",
+   Callback = function(Value)
+       getgenv().CustomJump = Value
+   end,
 })
 
--- Фоновые процессы
+-- Циклы и фоновые процессы
 RunService.RenderStepped:Connect(function()
     if getgenv().AimbotEnabled then
         local target = getgenv().getClosestInFOV()
