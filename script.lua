@@ -102,12 +102,12 @@ local function assignRole(player, toolName)
     if name:find("knife") or name:find("нож") or name:find("blade") or name:find("dagger") then
         if getgenv().playerRoles[player] ~= getgenv().COLOR_MURDERER then
             getgenv().playerRoles[player] = getgenv().COLOR_MURDERER
-            Rayfield:Notify({ Title = "CrystalHub", Content = "🔪 Убийца найден: " .. player.Name, Duration = 3 })
+            Rayfield:Notify({ Title = "CrystalHub", Content = "Убийца найден: " .. player.Name, Duration = 3 })
         end
     elseif name:find("gun") or name:find("revolver") or name:find("pistol") or name:find("пест") or name:find("luger") then
         if getgenv().playerRoles[player] ~= getgenv().COLOR_SHERIFF then
             getgenv().playerRoles[player] = getgenv().COLOR_SHERIFF
-            Rayfield:Notify({ Title = "CrystalHub", Content = "🔫 Шериф найден: " .. player.Name, Duration = 3 })
+            Rayfield:Notify({ Title = "CrystalHub", Content = "Шериф найден: " .. player.Name, Duration = 3 })
         end
     end
 end
@@ -335,9 +335,9 @@ getgenv().toggleShotButton = function(state)
             btn.Position = UDim2.new(0.82, 0, 0.45, 0)
             btn.Size = UDim2.new(0, 55, 0, 55)
             btn.Font = Enum.Font.SourceSansBold
-            btn.Text = "🎯"
+            btn.Text = "SHOT"
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.TextSize = 24
+            btn.TextSize = 18
             btn.Draggable = true
             btn.Active = true
 
@@ -498,10 +498,13 @@ FarmTab:CreateToggle({
    Flag = "AutoFarmToggle",
    Callback = function(Value)
        getgenv().AutoFarmEnabled = Value
-       if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-           LocalPlayer.Character.Humanoid.PlatformStand = false
+       if not Value then
+           if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+               LocalPlayer.Character.Humanoid.PlatformStand = false
+           end
            if getgenv().currentTween then getgenv().currentTween:Cancel() end
            getgenv().isFarming = false
+           stopFlying()
        end
    end,
 })
@@ -523,38 +526,58 @@ FarmTab:CreateSlider({
    Callback = function(Value) getgenv().FarmSpeed = Value end,
 })
 
+-- ================= ТЕЛЕПОРТЫ (БЕЗ ЭМОДЗИ) =================
 TeleportTab:CreateButton({
-   Name = "Телепорт в Лобби",
+   Name = "Teleport to Lobby",
    Callback = function()
        local lobby = Workspace:FindFirstChild("Lobby") or Workspace:FindFirstChild("LobbyMap")
        if lobby and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
            LocalPlayer.Character.HumanoidRootPart.CFrame = lobby:GetModelCFrame() + Vector3.new(0, 5, 0)
        else
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Лобби не найдено!", Duration = 2 })
+           LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108.5, 145, 0.6)
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Lobby", Duration = 2 })
        end
    end,
 })
 
 TeleportTab:CreateButton({
-   Name = "Телепорт к Убийце",
+   Name = "Teleport to Map Spawn",
+   Callback = function()
+       local success = false
+       for _, child in ipairs(Workspace:GetDescendants()) do
+           if child.Name == "Spawns" and child:FindFirstChild("Spawn") then
+               LocalPlayer.Character.HumanoidRootPart.CFrame = child.Spawn.CFrame
+               success = true
+               Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Map", Duration = 2 })
+               break
+           end
+       end
+       if not success then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Spawn not found!", Duration = 2 })
+       end
+   end,
+})
+
+TeleportTab:CreateButton({
+   Name = "Teleport to Murderer",
    Callback = function()
        local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
        if m and m.Character and m.Character:FindFirstChild("HumanoidRootPart") then
            LocalPlayer.Character.HumanoidRootPart.CFrame = m.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 3)
        else
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Убийца не найден!", Duration = 2 })
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
        end
    end,
 })
 
 TeleportTab:CreateButton({
-   Name = "Телепорт к Шерифу",
+   Name = "Teleport to Sheriff",
    Callback = function()
        local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
        if s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
            LocalPlayer.Character.HumanoidRootPart.CFrame = s.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 3)
        else
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Шериф не найден!", Duration = 2 })
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
        end
    end,
 })
@@ -604,7 +627,7 @@ PlayerTab:CreateToggle({
 })
 
 PlayerTab:CreateSlider({
-   Name = "Скорость",
+   Name = "Speed",
    Range = {16, 120},
    Increment = 1,
    Suffix = " speed",
@@ -612,22 +635,12 @@ PlayerTab:CreateSlider({
    Flag = "SpeedSlider",
    Callback = function(Value) getgenv().CustomSpeed = Value end,
 })
-
-PlayerTab:CreateSlider({
-   Name = "Прыжок",
-   Range = {50, 200},
-   Increment = 1,
-   Suffix = " power",
-   CurrentValue = 50,
-   Flag = "JumpSlider",
-   Callback = function(Value) getgenv().CustomJump = Value end,
-})
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 4/4
 -- =================================================================
 
--- ================= ESP ИГРОКОВ (ОПТИМИЗИРОВАННЫЙ - БЕЗ ЛАГОВ) =================
+-- ================= ESP ИГРОКОВ (ОПТИМИЗИРОВАННЫЙ) =================
 local function updateESP()
     if not getgenv().ESPEnabled or not getgenv().isInRound() then
         for _, p in ipairs(Players:GetPlayers()) do
@@ -701,7 +714,7 @@ task.spawn(function()
     end
 end)
 
--- ================= ESP ПИСТОЛЕТА (ОПТИМИЗИРОВАННЫЙ) =================
+-- ================= ESP ПИСТОЛЕТА =================
 local function updateGunESP()
     if not getgenv().GunESPEnabled or not getgenv().isInRound() then
         for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -734,7 +747,7 @@ local function updateGunESP()
                 local label = Instance.new("TextLabel")
                 label.Size = UDim2.new(1, 0, 1, 0)
                 label.BackgroundTransparency = 1
-                label.Text = "🔫 GUN"
+                label.Text = "GUN"
                 label.TextColor3 = Color3.fromRGB(255, 255, 0)
                 label.TextScaled = true
                 label.Font = Enum.Font.SourceSansBold
@@ -773,7 +786,7 @@ task.spawn(function()
             hrp.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
             task.wait(0.15)
             hrp.CFrame = oldCF
-            Rayfield:Notify({ Title = "CrystalHub", Content = "🔫 Пистолет подобран!", Duration = 2 })
+            Rayfield:Notify({ Title = "CrystalHub", Content = "Gun picked up!", Duration = 2 })
             task.wait(0.5)
         end
     end
@@ -796,18 +809,84 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ================= АВТОФАРМ (ТОЛЬКО В РАУНДЕ И ЖИВ) =================
+-- ================= АВТОФАРМ (ПЛАВНЫЙ ПОЛЁТ) =================
+local flyToggle = false
+local flyBodyVelocity = nil
+local flyBodyGyro = nil
+
+local function stopFlying()
+    flyToggle = false
+    if flyBodyVelocity then flyBodyVelocity:Destroy() end
+    if flyBodyGyro then flyBodyGyro:Destroy() end
+    flyBodyVelocity = nil
+    flyBodyGyro = nil
+    
+    local char = LocalPlayer.Character
+    if char then
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+    end
+end
+
+local function startFlying(targetPos)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not hrp or not humanoid then return end
+    
+    flyToggle = true
+    humanoid.PlatformStand = true
+    
+    flyBodyVelocity = Instance.new("BodyVelocity")
+    flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyBodyVelocity.P = 9e4
+    flyBodyVelocity.Parent = hrp
+    
+    flyBodyGyro = Instance.new("BodyGyro")
+    flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyBodyGyro.P = 9e4
+    flyBodyGyro.Parent = hrp
+    
+    local startPos = hrp.Position
+    local distance = (targetPos - startPos).Magnitude
+    local speed = math.min(distance / 0.3, 80)
+    
+    while flyToggle and hrp and hrp.Parent do
+        local currentPos = hrp.Position
+        local direction = (targetPos - currentPos).Unit
+        local distToTarget = (targetPos - currentPos).Magnitude
+        
+        if distToTarget < 2 then
+            break
+        end
+        
+        local speedMultiplier = math.min(distToTarget / 10, 1)
+        local currentSpeed = speed * (0.5 + speedMultiplier * 0.5)
+        
+        flyBodyVelocity.Velocity = direction * currentSpeed
+        flyBodyGyro.CFrame = CFrame.lookAt(hrp.Position, targetPos)
+        
+        task.wait()
+    end
+    
+    stopFlying()
+end
+
 task.spawn(function()
     while true do
         task.wait(0.1)
         if getgenv().AutoFarmEnabled and getgenv().isInRound() and getgenv().isAlive() then
             local char = LocalPlayer.Character
             if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then
+                task.wait(0.5)
                 continue
             end
             
             local hrp = char.HumanoidRootPart
-            local humanoid = char.Humanoid
             
             local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
             local murdPos = nil
@@ -821,7 +900,8 @@ task.spawn(function()
             for _, obj in ipairs(Workspace:GetDescendants()) do
                 if obj:IsA("BasePart") and (obj.Name:lower():find("coin") or obj.Name:lower():find("монет")) then
                     if getgenv().SmartFarm and murdPos then
-                        if (obj.Position - murdPos).Magnitude < 30 then                            continue
+                        if (obj.Position - murdPos).Magnitude < 30 then
+                            continue
                         end
                     end
                     
@@ -834,28 +914,24 @@ task.spawn(function()
             end
 
             if bestCoin then
-                humanoid.PlatformStand = true
-                getgenv().isFarming = true
-                
-                hrp.CFrame = CFrame.new(bestCoin.Position)
-                task.wait()
+                startFlying(bestCoin.Position)
+                task.wait(0.05)
                 
                 local flyDirection = (hrp.Position - (murdPos or Vector3.new(0, 0, 0))).Unit
                 if flyDirection.Magnitude < 0.1 then
                     flyDirection = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1)).Unit
-                end                
-                hrp.CFrame = hrp.CFrame + (flyDirection * 10)
-                humanoid.PlatformStand = false
-                getgenv().isFarming = false
+                end
+                
+                hrp.CFrame = hrp.CFrame + (flyDirection * 15)
+                stopFlying()
                 
                 task.wait(0.05)
             else
-                humanoid.PlatformStand = false
-                if getgenv().currentTween then getgenv().currentTween:Cancel() end
-                getgenv().isFarming = false
+                stopFlying()
                 task.wait(0.5)
             end
         else
+            stopFlying()
             task.wait(0.5)
         end
     end
@@ -877,3 +953,12 @@ RunService.RenderStepped:Connect(function()
 end)
 
 print("CrystalHub MM2 Ultimate - Fully Loaded!")
+PlayerTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 200},
+   Increment = 1,
+   Suffix = " power",
+   CurrentValue = 50,
+   Flag = "JumpSlider",
+   Callback = function(Value) getgenv().CustomJump = Value end,
+})
