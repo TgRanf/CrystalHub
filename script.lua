@@ -1,7 +1,3 @@
--- ====================================================================
--- CrystalHub | MM2 Thank you for choosing us
--- ====================================================================
-
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/Fluent.lua"))()
 
 local Window = Fluent:CreateWindow({
@@ -14,7 +10,6 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Создаем вкладки
 local Tabs = {
     Combat = Window:AddTab({ Title = "Бой", Icon = "swords" }),
     Farm = Window:AddTab({ Title = "Автофарм", Icon = "coins" }),
@@ -30,12 +25,11 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Состояние и настройки
 local AimbotEnabled = false
 local VisibleCheckEnabled = true
 local AimbotFOV = 130
 local AimbotSmoothness = 4
-local AimbotTargetMode = "Все" -- "Все", "Только Убийца", "Только Шериф"
+local AimbotTargetMode = "Все"
 
 local AutoFarmEnabled = false
 local FarmSpeed = 30
@@ -46,7 +40,6 @@ local NoclipEnabled = false
 local CustomSpeed = 16
 local CustomJump = 50
 
--- 🛡️ 1. ПРОВЕРКА НА ЛОББИ (LOBBY CHECK)
 local function isInRound()
     for _, obj in ipairs(Workspace:GetChildren()) do
         if obj:FindFirstChild("CoinContainer") or obj:FindFirstChild("Spawns") or obj.Name == "Map" then
@@ -61,7 +54,6 @@ local function isInRound()
     return false
 end
 
--- ⚡ 2. МГНОВЕННЫЙ ПЕРЕХВАТ РОЛЕЙ (0-я СЕКУНДА РАУНДА)
 local playerRoles = {}
 local COLOR_INNOCENT = Color3.fromRGB(0, 255, 0)
 local COLOR_SHERIFF  = Color3.fromRGB(0, 150, 255)
@@ -123,7 +115,6 @@ local function getPlayerByRole(roleColor)
     return nil
 end
 
--- 🎯 3. КНОПКА AUTO-SHOT
 local ShotGui = nil
 
 local function toggleShotButton(state)
@@ -191,7 +182,6 @@ local function toggleShotButton(state)
     end
 end
 
--- 🌀 4. ФЛИНГ И AUTO-GRAB GUN
 local function flingTarget(targetPlayer)
     if not isInRound() then
         Fluent:Notify({ Title = "CrystalHub", Content = "Нельзя использовать в Лобби!", Duration = 3 })
@@ -317,9 +307,6 @@ local function getClosestInFOV()
     end
     return closestTarget
 end
--- ⚙️ 5. НАПИСАНИЕ ИНТЕРФЕЙСА (FLUENT UI TABS)
-
--- ВКЛАДКА: БОЙ
 local CombatSection = Tabs.Combat:AddSection("Управление Боем")
 
 CombatSection:AddToggle("ShowShotBtn", {
@@ -379,7 +366,6 @@ AimbotSection:AddSlider("FOVRadius", {
     Callback = function(Value) AimbotFOV = Value end
 })
 
--- ВКЛАДКА: АВТОФАРМ
 local FarmSection = Tabs.Farm:AddSection("Настройки Фарма")
 
 FarmSection:AddToggle("AutoFarmToggle", {
@@ -400,7 +386,6 @@ FarmSection:AddSlider("FarmSpeedSlider", {
     Callback = function(Value) FarmSpeed = Value end
 })
 
--- ВКЛАДКА: ВИЗУАЛЫ
 local VisualsSection = Tabs.Visuals:AddSection("Подсветка Игроков")
 
 VisualsSection:AddToggle("ESPToggle", {
@@ -427,7 +412,6 @@ VisualsSection:AddToggle("ESPToggle", {
     end
 })
 
--- ВКЛАДКА: ИГРОК
 local PlayerSection = Tabs.Player:AddSection("Модификации Персонажа")
 
 PlayerSection:AddToggle("NoclipToggle", {
@@ -448,9 +432,6 @@ PlayerSection:AddSlider("JumpSlider", {
     Callback = function(Value) CustomJump = Value end
 })
 
--- 🔄 6. ОСНОВНЫЕ ЦИКЛЫ ОБРАБОТКИ (RENDER & HEARTBEAT)
-
--- Работа Аимбота и ESP
 RunService.RenderStepped:Connect(function()
     if AimbotEnabled then
         local target = getClosestInFOV()
@@ -471,7 +452,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Логика Автофарма Монет
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -531,7 +511,6 @@ task.spawn(function()
     end
 end)
 
--- Физика Игрока (Speed, Jump, Noclip)
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
     if char then
