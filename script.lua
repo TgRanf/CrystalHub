@@ -1,6 +1,6 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                ALL FUNCTIONS FROM YOUR SOURCES
+--                ALL FUNCTIONS FROM YOUR SOURCES (ORIGINAL)
 --                           PART 1/4
 -- =================================================================
 
@@ -18,7 +18,7 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false
 })
 
--- Вкладки
+-- Вкладки (из MarsInsanity)
 local CombatTab   = Window:CreateTab("Combat", 4483362458)
 local SilentTab   = Window:CreateTab("Silent Aim", 4483362458)
 local FarmTab     = Window:CreateTab("Auto Farm", 4483362458)
@@ -38,28 +38,28 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
--- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
+-- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ (ИЗ ВАШЕГО КОДА) =================
 
--- Silent Aim
+-- Silent Aim (из Stefanuk12)
 getgenv().SilentAimEnabled = false
 getgenv().SilentAimTargetMode = "Убийца"
 getgenv().SilentAimHitChance = 100
 getgenv().SilentAimPrediction = true
 getgenv().SilentAimPredictionAmount = 0.165
 
--- Хитбоксы & Бой
+-- Хитбоксы & Бой (из вашего кода)
 getgenv().HitboxEnabled = false
 getgenv().HitboxSize = 5
 getgenv().AutoGrabGunEnabled = false
 
--- Автофарм
+-- Автофарм (из MarsInsanity + ваш код)
 getgenv().AutoFarmEnabled = false
 getgenv().FarmSpeed = 30
 getgenv().SmartFarm = true
 getgenv().currentTween = nil
 getgenv().isFarming = false
 
--- Визуалы & Персонаж
+-- Визуалы & Персонаж (из MarsInsanity + ваш код)
 getgenv().ESPEnabled = false
 getgenv().GunESPEnabled = false
 getgenv().NoclipEnabled = false
@@ -69,7 +69,7 @@ getgenv().FlyEnabled = false
 getgenv().InfiniteJumpEnabled = false
 getgenv().XRayEnabled = false
 
--- ================= ПРОВЕРКА СТАТУСА =================
+-- ================= ПРОВЕРКА СТАТУСА (ИЗ ВАШЕГО КОДА) =================
 local roundCache = false
 local roundCheckTime = 0
 getgenv().isInRound = function()
@@ -86,7 +86,7 @@ getgenv().isAlive = function()
     return hum and hum.Health > 0
 end
 
--- ================= МГНОВЕННОЕ ОПРЕДЕЛЕНИЕ РОЛЕЙ (ИЗ ВАШЕГО КОДА) =================
+-- ================= ОПРЕДЕЛЕНИЕ РОЛЕЙ (ИЗ ВАШЕГО ОРИГИНАЛЬНОГО КОДА) =================
 getgenv().playerRoles = {}
 getgenv().COLOR_INNOCENT = Color3.fromRGB(0, 255, 0)
 getgenv().COLOR_SHERIFF  = Color3.fromRGB(0, 150, 255)
@@ -155,9 +155,32 @@ getgenv().getPlayerByRole = function(roleColor)
     end
     return nil
 end
+
+-- ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ИЗ MARSINSANITY) =================
+local function antiLag()
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+        end
+    end
+    Lighting.GlobalShadows = false
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Anti-Lag applied!", Duration = 2 })
+end
+
+local function fullBright()
+    Lighting.Brightness = 2
+    Lighting.ClockTime = 14
+    Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright enabled!", Duration = 2 })
+end
+
+local function removeShadows()
+    Lighting.GlobalShadows = false
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Shadows removed!", Duration = 2 })
+end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 2/4 (ОРИГИНАЛЫ)
+--                           PART 2/4 (ORIGINAL)
 -- =================================================================
 
 -- ================= SILENT AIM (ОРИГИНАЛ ИЗ STEFANUK12) =================
@@ -278,17 +301,6 @@ end
 local function teleportHandleToPart(part)
     local Tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
     if not Tool then
-        local bp = LocalPlayer:FindFirstChild("Backpack")
-        if bp then
-            Tool = bp:FindFirstChildOfClass("Tool")
-            if Tool then
-                LocalPlayer.Character.Humanoid:EquipTool(Tool)
-                task.wait(0.1)
-                Tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-            end
-        end
-    end
-    if not Tool then
         print("No tool equipped. Please equip a tool and try again.")
         return
     end
@@ -310,7 +322,6 @@ local function teleportHandleToPlayer(player)
         for _, part in ipairs(player.Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 teleportHandleToPart(part)
-                task.wait(0.02)
             end
         end
     end
@@ -442,35 +453,12 @@ getgenv().toggleShotButton = function(state)
         if ShotGui then ShotGui.Enabled = false end
     end
 end
-
--- ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ОРИГИНАЛ ИЗ MARSINSANITY) =================
-local function antiLag()
-    for _, v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-            v.Material = Enum.Material.SmoothPlastic
-            v.Reflectance = 0
-        end
-    end
-    Lighting.GlobalShadows = false
-    Rayfield:Notify({ Title = "CrystalHub", Content = "Anti-Lag applied!", Duration = 2 })
-end
-
-local function fullBright()
-    Lighting.Brightness = 2
-    Lighting.ClockTime = 14
-    Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright enabled!", Duration = 2 })
-end
-
-local function removeShadows()
-    Lighting.GlobalShadows = false
-    Rayfield:Notify({ Title = "CrystalHub", Content = "Shadows removed!", Duration = 2 })
-end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 3/4
+--                           PART 3/4 (ORIGINAL)
 -- =================================================================
 
--- ================= ВКЛАДКА: COMBAT =================
+-- ================= ВКЛАДКА: COMBAT (ИЗ MARSINSANITY + ВАШ КОД) =================
 CombatTab:CreateToggle({
    Name = "Auto Grab Gun",
    CurrentValue = false,
@@ -538,7 +526,7 @@ CombatTab:CreateToggle({
    Callback = function(Value) getgenv().toggleShotButton(Value) end,
 })
 
--- ================= ВКЛАДКА: SILENT AIM =================
+-- ================= ВКЛАДКА: SILENT AIM (ИЗ STEFANUK12) =================
 SilentTab:CreateToggle({
    Name = "Silent Aim",
    CurrentValue = false,
@@ -586,7 +574,7 @@ SilentTab:CreateToggle({
    Callback = function(Value) ValiantAimHacks.VisibleCheck = Value end,
 })
 
--- ================= ВКЛАДКА: AUTO FARM =================
+-- ================= ВКЛАДКА: AUTO FARM (ИЗ MARSINSANITY + ВАШ КОД) =================
 FarmTab:CreateToggle({
    Name = "Auto Farm Coins",
    CurrentValue = false,
@@ -620,7 +608,7 @@ FarmTab:CreateSlider({
    Callback = function(Value) getgenv().FarmSpeed = Value end,
 })
 
--- ================= ВКЛАДКА: TELEPORTS =================
+-- ================= ВКЛАДКА: TELEPORTS (ИЗ MARSINSANITY) =================
 TeleportTab:CreateButton({
    Name = "TP to Lobby",
    Callback = function()
@@ -676,24 +664,54 @@ TeleportTab:CreateButton({
    end,
 })
 
--- ================= ВКЛАДКА: VISUALS =================
+-- ================= ВКЛАДКА: VISUALS (ИЗ MURDER_MYSTERY_2-SIMPLE_ESP + ВАШ КОД) =================
 VisualsTab:CreateToggle({
-   Name = "ESP Roles",
+   Name = "ESP ON (E)",
    CurrentValue = false,
    Flag = "ESPToggle",
    Callback = function(Value)
        getgenv().ESPEnabled = Value
-       if not Value then
+   end,
+})
+
+VisualsTab:CreateToggle({
+   Name = "ESP OFF (F)",
+   CurrentValue = false,
+   Flag = "ESPOffToggle",
+   Callback = function(Value)
+       if Value then
            for _, p in ipairs(Players:GetPlayers()) do
                if p.Character then
-                   if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
-                   if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
-                   if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
-                       p.Character.Head.RoleTag:Destroy()
+                   for _, child in ipairs(p.Character:GetDescendants()) do
+                       if child.Name == "EGUI" then
+                           child:Destroy()
+                       end
+                   end
+               end
+           end
+           getgenv().ESPEnabled = false
+       end
+   end,
+})
+
+VisualsTab:CreateButton({
+   Name = "Refresh ESP",
+   Callback = function()
+       for _, p in ipairs(Players:GetPlayers()) do
+           if p.Character then
+               for _, child in ipairs(p.Character:GetDescendants()) do
+                   if child.Name == "EGUI" then
+                       child:Destroy()
                    end
                end
            end
        end
+       if getgenv().ESPEnabled then
+           for _, p in ipairs(Players:GetPlayers()) do
+               createESP(p)
+           end
+       end
+       Rayfield:Notify({ Title = "CrystalHub", Content = "ESP Refreshed!", Duration = 2 })
    end,
 })
 
@@ -703,14 +721,6 @@ VisualsTab:CreateToggle({
    Flag = "GunESPToggle",
    Callback = function(Value)
        getgenv().GunESPEnabled = Value
-       if not Value then
-           for _, obj in ipairs(Workspace:GetDescendants()) do
-               if obj.Name == "GunDrop" or obj.Name == "DroppedGun" then
-                   if obj:FindFirstChild("GunESP") then obj.GunESP:Destroy() end
-                   if obj:FindFirstChild("GunTag") then obj.GunTag:Destroy() end
-               end
-           end
-       end
    end,
 })
 
@@ -732,37 +742,16 @@ VisualsTab:CreateToggle({
    end,
 })
 
-VisualsTab:CreateButton({
-   Name = "Refresh ESP",
-   Callback = function()
-       for _, p in ipairs(Players:GetPlayers()) do
-           if p.Character and p.Character:FindFirstChild("Head") then
-               for _, child in ipairs(p.Character.Head:GetChildren()) do
-                   if child:IsA("BoxHandleAdornment") then
-                       child:Destroy()
-                   end
-               end
-           end
-       end
-       if getgenv().ESPEnabled then
-           for _, p in ipairs(Players:GetPlayers()) do
-               createESP(p)
-           end
-       end
-       Rayfield:Notify({ Title = "CrystalHub", Content = "ESP Refreshed!", Duration = 2 })
-   end,
-})
-
--- ================= ВКЛАДКА: PLAYER =================
+-- ================= ВКЛАДКА: PLAYER (ИЗ MARSINSANITY) =================
 PlayerTab:CreateToggle({
-   Name = "Noclip",
+   Name = "Noclip [C]",
    CurrentValue = false,
    Flag = "NoclipToggle",
    Callback = function(Value) getgenv().NoclipEnabled = Value end,
 })
 
 PlayerTab:CreateToggle({
-   Name = "Fly (WASD)",
+   Name = "Fly [X]",
    CurrentValue = false,
    Flag = "FlyToggle",
    Callback = function(Value)
@@ -790,7 +779,7 @@ PlayerTab:CreateToggle({
 })
 
 PlayerTab:CreateToggle({
-   Name = "Infinite Jump",
+   Name = "Infinite Jump [V]",
    CurrentValue = false,
    Flag = "InfiniteJumpToggle",
    Callback = function(Value)
@@ -799,27 +788,51 @@ PlayerTab:CreateToggle({
    end,
 })
 
-PlayerTab:CreateSlider({
-   Name = "Speed",
-   Range = {16, 120},
-   Increment = 1,
-   Suffix = " speed",
-   CurrentValue = 16,
-   Flag = "SpeedSlider",
-   Callback = function(Value) getgenv().CustomSpeed = Value end,
+PlayerTab:CreateTextBox({
+   Name = "Walkspeed",
+   PlaceholderText = "Insert Walkspeed",
+   CurrentValue = "",
+   Flag = "WalkspeedTB",
+   Callback = function(Value)
+       local num = tonumber(Value)
+       if num then
+           getgenv().CustomSpeed = num
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Speed set to " .. num, Duration = 2 })
+       end
+   end,
 })
 
-PlayerTab:CreateSlider({
+PlayerTab:CreateButton({
+   Name = "Reset Speed",
+   Callback = function()
+       getgenv().CustomSpeed = 16
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Speed reset to 16", Duration = 2 })
+   end,
+})
+
+PlayerTab:CreateTextBox({
    Name = "Jump Power",
-   Range = {50, 200},
-   Increment = 1,
-   Suffix = " power",
-   CurrentValue = 50,
-   Flag = "JumpSlider",
-   Callback = function(Value) getgenv().CustomJump = Value end,
+   PlaceholderText = "Insert JumpPower",
+   CurrentValue = "",
+   Flag = "JumpPowerTB",
+   Callback = function(Value)
+       local num = tonumber(Value)
+       if num then
+           getgenv().CustomJump = num
+           Rayfield:Notify({ Title = "CrystalHub", Content = "JumpPower set to " .. num, Duration = 2 })
+       end
+   end,
 })
 
--- ================= ВКЛАДКА: MISC =================
+PlayerTab:CreateButton({
+   Name = "Reset Jump",
+   Callback = function()
+       getgenv().CustomJump = 50
+       Rayfield:Notify({ Title = "CrystalHub", Content = "JumpPower reset to 50", Duration = 2 })
+   end,
+})
+
+-- ================= ВКЛАДКА: MISC (ИЗ MARSINSANITY) =================
 MiscTab:CreateButton({
    Name = "Anti-Lag (FPS Boost)",
    Callback = function() antiLag() end,
@@ -845,10 +858,10 @@ MiscTab:CreateButton({
 })
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 4/4
+--                           PART 4/4 (ORIGINAL)
 -- =================================================================
 
--- ================= ESP (ТОЧНО КАК В MURDER_MYSTERY_2-SIMPLE_ESP) =================
+-- ================= ESP (ОРИГИНАЛ ИЗ MURDER_MYSTERY_2-SIMPLE_ESP) =================
 local faces = {"Back", "Bottom", "Front", "Left", "Right", "Top"}
 
 local function createESP(player)
