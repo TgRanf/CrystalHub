@@ -317,3 +317,239 @@ local function getClosestInFOV()
     end
     return closestTarget
 end
+-- ⚙️ 5. НАПИСАНИЕ ИНТЕРФЕЙСА (FLUENT UI TABS)
+
+-- ВКЛАДКА: БОЙ
+local CombatSection = Tabs.Combat:AddSection("Управление Боем")
+
+CombatSection:AddToggle("ShowShotBtn", {
+    Title = "Отображать кнопку Auto-Shot (🎯)",
+    Default = false,
+    Callback = function(Value) toggleShotButton(Value) end
+})
+
+CombatSection:AddButton({
+    Title = "Авто-подбор Пистолета (Auto-Grab Gun)",
+    Description = "Телепортирует к выпавшему песту и возвращает назад",
+    Callback = function() autoGrabGun() end
+})
+
+CombatSection:AddButton({
+    Title = "Флинг Убийцы (Fling Murderer)",
+    Callback = function()
+        local m = getPlayerByRole(COLOR_MURDERER)
+        flingTarget(m)
+    end
+})
+
+CombatSection:AddButton({
+    Title = "Флинг Шерифа (Fling Sheriff)",
+    Callback = function()
+        local s = getPlayerByRole(COLOR_SHERIFF)
+        flingTarget(s)
+    end
+})
+
+local AimbotSection = Tabs.Combat:AddSection("Аимбот")
+
+AimbotSection:AddToggle("AimbotToggle", {
+    Title = "Включить Аимбот",
+    Default = false,
+    Callback = function(Value) AimbotEnabled = Value end
+})
+
+AimbotSection:AddToggle("VisCheckToggle", {
+    Title = "Проверка стен (Visible Check)",
+    Default = true,
+    Callback = function(Value) VisibleCheckEnabled = Value end
+})
+
+AimbotSection:AddDropdown("AimbotTargetMode", {
+    Title = "Цель аимбота (Кого атаковать)",
+    Values = {"Все", "Только Убийца", "Только Шериф"},
+    Default = 1,
+    Callback = function(Value)
+        AimbotTargetMode = Value
+    end
+})
+
+AimbotSection:AddSlider("FOVRadius", {
+    Title = "Радиус захвата FOV",
+    Default = 130, Min = 50, Max = 300, Rounding = 0,
+    Callback = function(Value) AimbotFOV = Value end
+})
+
+-- ВКЛАДКА: АВТОФАРМ
+local FarmSection = Tabs.Farm:AddSection("Настройки Фарма")
+
+FarmSection:AddToggle("AutoFarmToggle", {
+    Title = "Включить Автофарм Монет",
+    Default = false,
+    Callback = function(Value)
+        AutoFarmEnabled = Value
+        if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.PlatformStand = false
+            if currentTween then currentTween:Cancel() end
+        end
+    end
+})
+
+FarmSection:AddSlider("FarmSpeedSlider", {
+    Title = "Скорость фарма",
+    Default = 30, Min = 15, Max = 50, Rounding = 0,
+    Callback = function(Value) FarmSpeed = Value end
+})
+
+-- ВКЛАДКА: ВИЗУАЛЫ
+local VisualsSection = Tabs.Visuals:AddSection("Подсветка Игроков")
+
+VisualsSection:AddToggle("ESPToggle", {
+    Title = "Включить ESP (Мгновенные Роли)",
+    Default = false,
+    Callback = function(Value)
+        ESPEnabled = Value
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                if Value then
+                    if not p.Character:FindFirstChild("RoleESP") then
+                        local hl = Instance.new("Highlight")
+                        hl.Name = "RoleESP"
+                        hl.Adornee = p.Character
+                        hl.Parent = p.Character
+                        hl.FillTransparency = 0.5
+                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    end
+                else
+                    if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
+                end
+            end
+        end
+    end
+})
+
+-- ВКЛАДКА: ИГРОК
+local PlayerSection = Tabs.Player:AddSection("Модификации Персонажа")
+
+PlayerSection:AddToggle("NoclipToggle", {
+    Title = "Noclip (Сквозь стены)",
+    Default = false,
+    Callback = function(Value) NoclipEnabled = Value end
+})
+
+PlayerSection:AddSlider("SpeedSlider", {
+    Title = "Скорость Бега",
+    Default = 16, Min = 16, Max = 120, Rounding = 0,
+    Callback = function(Value) CustomSpeed = Value end
+})
+
+PlayerSection:AddSlider("JumpSlider", {
+    Title = "Высота Прыжка",
+    Default = 50, Min = 50, Max = 200, Rounding = 0,
+    Callback = function(Value) CustomJump = Value end
+})
+
+-- 🔄 6. ОСНОВНЫЕ ЦИКЛЫ ОБРАБОТКИ (RENDER & HEARTBEAT)
+
+-- Работа Аимбота и ESP
+RunService.RenderStepped:Connect(function()
+    if AimbotEnabled then
+        local target = getClosestInFOV()
+        if target then
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / AimbotSmoothness)
+        end
+    end
+
+    if ESPEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("RoleESP") then
+                local color = playerRoles[p] or COLOR_INNOCENT
+                p.Character.RoleESP.FillColor = color
+                p.Character.RoleESP.OutlineColor = color
+            end
+        end
+    end
+end)
+
+-- Логика Автофарма Монет
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if AutoFarmEnabled then
+            if not isInRound() then
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.PlatformStand = false
+                end
+                if currentTween then currentTween:Cancel() end
+                continue
+            end
+
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+                local hrp = char.HumanoidRootPart
+
+                local murderer = getPlayerByRole(COLOR_MURDERER)
+                local murdPos = (murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")) and murderer.Character.HumanoidRootPart.Position
+
+                local closestCoin = nil
+                local shortestDist = math.huge
+
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and (obj.Name:lower():find("coin") or obj.Name:lower():find("монет")) then
+                        if not (murdPos and (obj.Position - murdPos).Magnitude < 20) then
+                            local dist = (hrp.Position - obj.Position).Magnitude
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                closestCoin = obj
+                            end
+                        end
+                    end
+                end
+
+                if closestCoin then
+                    char.Humanoid.PlatformStand = true
+                    local dist = (closestCoin.Position - hrp.Position).Magnitude
+                    local time = dist / FarmSpeed
+
+                    if time > 0.05 then
+                        if currentTween then currentTween:Cancel() end
+                        currentTween = TweenService:Create(hrp, TweenInfo.new(time, Enum.EasingStyle.Linear), {CFrame = CFrame.new(closestCoin.Position)})
+                        currentTween:Play()
+
+                        local elapsed = 0
+                        while elapsed < time and AutoFarmEnabled and closestCoin and closestCoin.Parent and isInRound() do
+                            task.wait(0.05)
+                            elapsed = elapsed + 0.05
+                        end
+                    end
+                else
+                    char.Humanoid.PlatformStand = false
+                    if currentTween then currentTween:Cancel() end
+                end
+            end
+        end
+    end
+end)
+
+-- Физика Игрока (Speed, Jump, Noclip)
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if char then
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = CustomSpeed
+            humanoid.JumpPower = CustomJump
+        end
+        if NoclipEnabled then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
+    end
+end)
+
+Fluent:Notify({
+    Title = "CrystalHub",
+    Content = "Скрипт успешно запущен!",
+    Duration = 5
+})
