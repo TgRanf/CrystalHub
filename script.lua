@@ -1,6 +1,6 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                ALL FUNCTIONS FROM YOUR SOURCES (ORIGINAL)
+--                ЧИСТЫЙ ОРИГИНАЛ ИЗ ВАШИХ ИСХОДНИКОВ
 --                           PART 1/4
 -- =================================================================
 
@@ -18,7 +18,7 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false
 })
 
--- Вкладки (из MarsInsanity + Misc)
+-- Вкладки (из MarsInsanity)
 local CombatTab   = Window:CreateTab("Combat", 4483362458)
 local SilentTab   = Window:CreateTab("Silent Aim", 4483362458)
 local FarmTab     = Window:CreateTab("Auto Farm", 4483362458)
@@ -52,14 +52,14 @@ getgenv().HitboxEnabled = false
 getgenv().HitboxSize = 5
 getgenv().AutoGrabGunEnabled = false
 
--- Автофарм (ОРИГИНАЛ ИЗ ВАШЕГО КОДА)
+-- Автофарм (из MarsInsanity)
 getgenv().AutoFarmEnabled = false
 getgenv().FarmSpeed = 30
 getgenv().SmartFarm = true
 getgenv().currentTween = nil
 getgenv().isFarming = false
 
--- Визуалы & Персонаж (из вашего кода)
+-- Визуалы & Персонаж (из MarsInsanity + ваш код)
 getgenv().ESPEnabled = false
 getgenv().GunESPEnabled = false
 getgenv().NoclipEnabled = false
@@ -69,7 +69,7 @@ getgenv().FlyEnabled = false
 getgenv().InfiniteJumpEnabled = false
 getgenv().XRayEnabled = false
 
--- ================= ПРОВЕРКА СТАТУСА (ОРИГИНАЛ ИЗ ВАШЕГО КОДА) =================
+-- ================= ПРОВЕРКА СТАТУСА (ИЗ ВАШЕГО КОДА) =================
 local roundCache = false
 local roundCheckTime = 0
 getgenv().isInRound = function()
@@ -86,7 +86,7 @@ getgenv().isAlive = function()
     return hum and hum.Health > 0
 end
 
--- ================= ОПРЕДЕЛЕНИЕ РОЛЕЙ (ОРИГИНАЛ ИЗ ВАШЕГО КОДА) =================
+-- ================= ОПРЕДЕЛЕНИЕ РОЛЕЙ (ИЗ ВАШЕГО ОРИГИНАЛЬНОГО КОДА) =================
 getgenv().playerRoles = {}
 getgenv().COLOR_INNOCENT = Color3.fromRGB(0, 255, 0)
 getgenv().COLOR_SHERIFF  = Color3.fromRGB(0, 150, 255)
@@ -156,7 +156,7 @@ getgenv().getPlayerByRole = function(roleColor)
     return nil
 end
 
--- ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ОРИГИНАЛ ИЗ MARSINSANITY) =================
+-- ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ИЗ MARSINSANITY) =================
 local function antiLag()
     for _, v in ipairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
@@ -180,6 +180,7 @@ local function removeShadows()
 end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
+--                ЧИСТЫЙ ОРИГИНАЛ ИЗ ВАШИХ ИСХОДНИКОВ
 --                           PART 2/4 (ПОЛНАЯ ВЕРСИЯ)
 -- =================================================================
 
@@ -494,6 +495,7 @@ local function XrayOff(obj)
 end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
+--                ЧИСТЫЙ ОРИГИНАЛ ИЗ ВАШИХ ИСХОДНИКОВ
 --                           PART 3/4
 -- =================================================================
 
@@ -703,6 +705,7 @@ game:GetService("RunService").Stepped:Connect(function()
 end)
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
+--                ЧИСТЫЙ ОРИГИНАЛ ИЗ ВАШИХ ИСХОДНИКОВ
 --                           PART 4/4 (ESP)
 -- =================================================================
 
