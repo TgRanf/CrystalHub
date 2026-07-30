@@ -522,7 +522,7 @@ getgenv().toggleShotButton = function(state)
 end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 3/4
+--                           PART 3/4 (ПОЛНОЕ МЕНЮ)
 -- =================================================================
 
 -- ================= ВКЛАДКА: COMBAT =================
@@ -592,6 +592,9 @@ CombatTab:CreateToggle({
    Flag = "AutoShotToggle",
    Callback = function(Value) getgenv().toggleShotButton(Value) end,
 })
+
+-- ================= ВКЛАДКА: SILENT AIM (УЖЕ ЗАПОЛНЕНА В PART 2) =================
+-- (Элементы Silent Aim уже добавлены в PART 2)
 
 -- ================= ВКЛАДКА: AUTO FARM =================
 FarmTab:CreateToggle({
@@ -693,13 +696,24 @@ TeleportTab:CreateTextBox({
    end,
 })
 
--- ================= ВКЛАДКА: VISUALS =================
+-- ================= ВКЛАДКА: VISUALS (ТЕПЕРЬ НЕ ПУСТАЯ) =================
 VisualsTab:CreateToggle({
    Name = "ESP ON (E)",
    CurrentValue = false,
    Flag = "ESPToggle",
    Callback = function(Value)
        getgenv().ESPEnabled = Value
+       if not Value then
+           for _, p in ipairs(Players:GetPlayers()) do
+               if p.Character and p.Character:FindFirstChild("Head") then
+                   for _, child in ipairs(p.Character.Head:GetChildren()) do
+                       if child:IsA("BoxHandleAdornment") then
+                           child:Destroy()
+                       end
+                   end
+               end
+           end
+       end
    end,
 })
 
@@ -780,7 +794,7 @@ VisualsTab:CreateToggle({
    end,
 })
 
--- ================= ВКЛАДКА: PLAYER =================
+-- ================= ВКЛАДКА: PLAYER (ТЕПЕРЬ НЕ ПУСТАЯ) =================
 PlayerTab:CreateToggle({
    Name = "Fly [X]",
    CurrentValue = false,
@@ -873,7 +887,7 @@ PlayerTab:CreateButton({
    end,
 })
 
--- ================= ВКЛАДКА: MISC =================
+-- ================= ВКЛАДКА: MISC (ТЕПЕРЬ НЕ ПУСТАЯ) =================
 MiscTab:CreateButton({
    Name = "Anti-Lag (FPS Boost)",
    Callback = function() antiLag() end,
