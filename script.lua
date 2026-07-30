@@ -1,17 +1,21 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---            Includes: Instant Role Detect, Silent Aim,
---            AutoFarm, Hitbox Expander, Fling, ESP & More
+--            Based on your original sources:
+--            - ESP: Murder_Mystery_2-simple_ESP
+--            - Silent Aim: Stefanuk12
+--            - AutoFarm: MarsInsanity + ZenosScript
+--            - Fling: joshclark756
+--            - Kill Murderer/All: MarsInsanity
 --                           PART 1/4
 -- =================================================================
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "CrystalHub | MM2 Ultimate Admin",
+   Name = "CrystalHub | MM2 Ultimate",
    Icon = 0,
    LoadingTitle = "CrystalHub MM2",
-   LoadingSubtitle = "Delta & Mobile Edition",
+   LoadingSubtitle = "Powered by Your Sources",
    Theme = "Default",
    DisableRayfieldPrompts = false,
    DisableBuildWarnings = false,
@@ -20,12 +24,12 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- Вкладки
-local CombatTab   = Window:CreateTab("Бой", 4483362458)
+local CombatTab   = Window:CreateTab("Combat", 4483362458)
 local SilentTab   = Window:CreateTab("Silent Aim", 4483362458)
-local FarmTab     = Window:CreateTab("Автофарм", 4483362458)
-local TeleportTab = Window:CreateTab("Телепорты", 4483362458)
-local VisualsTab  = Window:CreateTab("Визуалы", 4483362458)
-local PlayerTab   = Window:CreateTab("Игрок", 4483362458)
+local FarmTab     = Window:CreateTab("Auto Farm", 4483362458)
+local TeleportTab = Window:CreateTab("Teleports", 4483362458)
+local VisualsTab  = Window:CreateTab("Visuals", 4483362458)
+local PlayerTab   = Window:CreateTab("Player", 4483362458)
 
 -- Сервисы
 local Players = game:GetService("Players")
@@ -38,25 +42,6 @@ local Camera = Workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
 -- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
-
--- Silent Aim
-getgenv().SilentAimEnabled = false
-getgenv().SilentAimTargetMode = "Убийца"
-getgenv().SilentAimHitChance = 100
-getgenv().SilentAimPrediction = true
-getgenv().SilentAimPredictionAmount = 0.165
-
--- Камера Аимбот
-getgenv().AimbotEnabled = false
-getgenv().VisibleCheckEnabled = true
-getgenv().AimbotFOV = 130
-getgenv().AimbotSmoothness = 4
-getgenv().AimbotTargetMode = "Все"
-
--- Хитбоксы & Бой
-getgenv().HitboxEnabled = false
-getgenv().HitboxSize = 5
-getgenv().AutoGrabGunEnabled = false
 
 -- Автофарм
 getgenv().AutoFarmEnabled = false
@@ -71,6 +56,9 @@ getgenv().GunESPEnabled = false
 getgenv().NoclipEnabled = false
 getgenv().CustomSpeed = 16
 getgenv().CustomJump = 50
+
+-- Авто-подбор
+getgenv().AutoGrabGunEnabled = false
 
 -- ================= ПРОВЕРКА СТАТУСА =================
 local roundCache = false
@@ -102,12 +90,12 @@ local function assignRole(player, toolName)
     if name:find("knife") or name:find("нож") or name:find("blade") or name:find("dagger") then
         if getgenv().playerRoles[player] ~= getgenv().COLOR_MURDERER then
             getgenv().playerRoles[player] = getgenv().COLOR_MURDERER
-            Rayfield:Notify({ Title = "CrystalHub", Content = "Убийца найден: " .. player.Name, Duration = 3 })
+            Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer found: " .. player.Name, Duration = 3 })
         end
     elseif name:find("gun") or name:find("revolver") or name:find("pistol") or name:find("пест") or name:find("luger") then
         if getgenv().playerRoles[player] ~= getgenv().COLOR_SHERIFF then
             getgenv().playerRoles[player] = getgenv().COLOR_SHERIFF
-            Rayfield:Notify({ Title = "CrystalHub", Content = "Шериф найден: " .. player.Name, Duration = 3 })
+            Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff found: " .. player.Name, Duration = 3 })
         end
     end
 end
@@ -175,151 +163,135 @@ end
 --                           PART 2/4
 -- =================================================================
 
--- ================= SILENT AIM =================
-local function getSilentAimTarget()
-    if not getgenv().SilentAimEnabled then return nil end
-    
-    if math.random(1, 100) > getgenv().SilentAimHitChance then
-        return nil
-    end
+-- ================= SILENT AIM (ИЗ STEFANUK12) =================
+local ValiantAimHacks = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Stefanuk12/ROBLOX/master/Universal/Experimental%20Silent%20Aim%20Module.lua"))()
 
-    local targetPlayer = nil
-    
-    if getgenv().SilentAimTargetMode == "Убийца" then
-        targetPlayer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-    elseif getgenv().SilentAimTargetMode == "Шериф" then
-        targetPlayer = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
-    else
-        local shortestDist = math.huge
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        targetPlayer = p
-                    end
+ValiantAimHacks.SilentAimEnabled = false
+ValiantAimHacks.ShowFOV = true
+ValiantAimHacks.FOV = 60
+ValiantAimHacks.HitChance = 100
+ValiantAimHacks.VisibleCheck = true
+ValiantAimHacks.TeamCheck = false
+ValiantAimHacks.TargetPart = {"Head", "HumanoidRootPart"}
+
+-- Подключаем к интерфейсу
+SilentTab:CreateToggle({
+   Name = "Silent Aim (Knife/Gun)",
+   CurrentValue = false,
+   Flag = "SilentAimToggle",
+   Callback = function(Value)
+       ValiantAimHacks.SilentAimEnabled = Value
+       if not Value then
+           ValiantAimHacks.Selected = LocalPlayer
+           ValiantAimHacks.SelectedPart = nil
+       end
+   end,
+})
+
+SilentTab:CreateSlider({
+   Name = "FOV Radius",
+   Range = {30, 120},
+   Increment = 5,
+   Suffix = " degrees",
+   CurrentValue = 60,
+   Flag = "FOVSlider",
+   Callback = function(Value)
+       ValiantAimHacks.FOV = Value
+   end,
+})
+
+SilentTab:CreateSlider({
+   Name = "Hit Chance",
+   Range = {10, 100},
+   Increment = 5,
+   Suffix = "%",
+   CurrentValue = 100,
+   Flag = "HitChanceSlider",
+   Callback = function(Value)
+       ValiantAimHacks.HitChance = Value
+   end,
+})
+
+SilentTab:CreateToggle({
+   Name = "Show FOV Circle",
+   CurrentValue = true,
+   Flag = "ShowFOVToggle",
+   Callback = function(Value)
+       ValiantAimHacks.ShowFOV = Value
+   end,
+})
+
+SilentTab:CreateToggle({
+   Name = "Visible Check",
+   CurrentValue = true,
+   Flag = "VisibleCheckToggle",
+   Callback = function(Value)
+       ValiantAimHacks.VisibleCheck = Value
+   end,
+})
+
+-- Перехват для Silent Aim
+local mt = getrawmetatable(game)
+local backupIndex = mt.__index
+local backupNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__index = newcclosure(function(self, key)
+    if self == Mouse and not checkcaller() then
+        if ValiantAimHacks.checkSilentAim() then
+            local targetPart = ValiantAimHacks.SelectedPart
+            if targetPart then
+                if key == "Hit" then
+                    return targetPart.CFrame
+                elseif key == "Target" then
+                    return targetPart
                 end
             end
         end
     end
+    return backupIndex(self, key)
+end)
 
-    if targetPlayer and targetPlayer.Character then
-        return targetPlayer.Character:FindFirstChild("Head") or targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    end
-
-    return nil
-end
-
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
-    if self == Mouse and not checkcaller() and getgenv().SilentAimEnabled then
-        local targetPart = getSilentAimTarget()
-        if targetPart then
-            if index == "Hit" or index == "hit" then
-                if getgenv().SilentAimPrediction and targetPart:IsA("BasePart") then
-                    return targetPart.CFrame + (targetPart.Velocity * getgenv().SilentAimPredictionAmount)
-                end
-                return targetPart.CFrame
-            elseif index == "Target" or index == "target" then
-                return targetPart
-            end
-        end
-    end
-    return oldIndex(self, index)
-end))
-
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
-
-    if not checkcaller() and getgenv().SilentAimEnabled and self == workspace then
-        if method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" then
-            local targetPart = getSilentAimTarget()
-            if targetPart then
-                if method == "Raycast" then
-                    local origin = args[1]
-                    local targetPos = targetPart.Position
-                    if getgenv().SilentAimPrediction then
-                        targetPos = targetPos + (targetPart.Velocity * getgenv().SilentAimPredictionAmount)
-                    end
-                    args[2] = (targetPos - origin).Unit * 1000
-                    return oldNamecall(self, unpack(args))
+    
+    if not checkcaller() and method == "FireServer" then
+        if tostring(self):find("Shoot") or tostring(self):find("Gun") then
+            if ValiantAimHacks.checkSilentAim() then
+                local targetPart = ValiantAimHacks.SelectedPart
+                if targetPart then
+                    args[1] = targetPart.Position
+                    return backupNamecall(self, unpack(args))
+                end
+            end
+        end
+        if tostring(self):find("Knife") or tostring(self):find("Swing") then
+            if ValiantAimHacks.checkSilentAim() then
+                local targetPart = ValiantAimHacks.SelectedPart
+                if targetPart then
+                    args[1] = targetPart.Position
+                    return backupNamecall(self, unpack(args))
                 end
             end
         end
     end
+    
+    return backupNamecall(self, ...)
+end)
 
-    return oldNamecall(self, ...)
-end))
+setreadonly(mt, true)
 
--- ================= СИСТЕМА ФЛИГА =================
-getgenv().flingTarget = function(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Цель не найдена!", Duration = 3 })
-        return
-    end
-
-    local char = LocalPlayer.Character
-    if not char then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Персонаж не найден!", Duration = 3 })
-        return
-    end
-
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool then
-        local bp = LocalPlayer:FindFirstChild("Backpack")
-        if bp then
-            tool = bp:FindFirstChildOfClass("Tool")
-            if tool then
-                char.Humanoid:EquipTool(tool)
-                task.wait(0.1)
-                tool = char:FindFirstChildOfClass("Tool")
-            end
+task.spawn(function()
+    while task.wait(1) do
+        if not ValiantAimHacks.SilentAimEnabled then
+            ValiantAimHacks.Selected = LocalPlayer
+            ValiantAimHacks.SelectedPart = nil
         end
     end
+end)
 
-    if not tool then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Нет инструмента!", Duration = 3 })
-        return
-    end
-
-    local handle = tool:FindFirstChild("Handle")
-    if not handle then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Нет Handle!", Duration = 3 })
-        return
-    end
-
-    local originalCF = handle.CFrame
-    local targetParts = {}
-    for _, part in ipairs(targetPlayer.Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            table.insert(targetParts, part)
-        end
-    end
-
-    if #targetParts == 0 then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Нет частей у цели!", Duration = 3 })
-        return
-    end
-
-    for i = 1, 15 do
-        for _, part in ipairs(targetParts) do
-            if part and part.Parent then
-                handle.CFrame = part.CFrame * CFrame.new(0, 0, 0.5)
-                task.wait(0.01)
-            end
-        end
-        task.wait(0.02)
-    end
-
-    handle.CFrame = originalCF
-    Rayfield:Notify({ Title = "CrystalHub", Content = "Флинг выполнен!", Duration = 3 })
-end
-
--- ================= КНОПКА ВЫСТРЕЛА =================
+-- ================= SHOT BUTTON (ИЗ MARSINSANITY, БЕЗ ЭМОДЗИ) =================
 local ShotGui = nil
 getgenv().toggleShotButton = function(state)
     if state then
@@ -345,20 +317,16 @@ getgenv().toggleShotButton = function(state)
             corner.CornerRadius = UDim.new(1, 0)
             corner.Parent = btn
 
-            local stroke = Instance.new("UIStroke")
-            stroke.Parent = btn
-            stroke.Color = Color3.fromRGB(255, 255, 255)
-            stroke.Thickness = 2
-
             btn.MouseButton1Click:Connect(function()
                 if not getgenv().isInRound() or not getgenv().isAlive() then
-                    Rayfield:Notify({ Title = "CrystalHub", Content = "Недоступно!", Duration = 3 })
+                    Rayfield:Notify({ Title = "CrystalHub", Content = "Not available!", Duration = 2 })
                     return
                 end
 
                 local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
                 if murderer and murderer.Character and murderer.Character:FindFirstChild("Head") then
                     local targetHead = murderer.Character.Head
+                    
                     local bp = LocalPlayer:FindFirstChild("Backpack")
                     if bp then
                         local gun = bp:FindFirstChildOfClass("Tool")
@@ -367,14 +335,15 @@ getgenv().toggleShotButton = function(state)
                             task.wait(0.05)
                         end
                     end
+                    
                     local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
                     if tool then
                         Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
                         tool:Activate()
-                        Rayfield:Notify({ Title = "CrystalHub", Content = "Выстрел!", Duration = 2 })
+                        Rayfield:Notify({ Title = "CrystalHub", Content = "Shot fired!", Duration = 2 })
                     end
                 else
-                    Rayfield:Notify({ Title = "CrystalHub", Content = "Убийца не найден!", Duration = 2 })
+                    Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
                 end
             end)
         end
@@ -383,6 +352,143 @@ getgenv().toggleShotButton = function(state)
         if ShotGui then ShotGui.Enabled = false end
     end
 end
+
+-- ================= KILL MURDERER (ИЗ MARSINSANITY) =================
+local function GetMurderer()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            if v.Character and v.Character:FindFirstChild("Knife") then
+                return v
+            end
+            if v.Backpack and v.Backpack:FindFirstChild("Knife") then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+-- ================= ФЛИНГ (ИЗ JOSHCLARK756) =================
+local flingEnabled = false
+local velocityEnabled = false
+local flingTargetPlayer = nil
+
+local function getRoot(char)
+    return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
+end
+
+local function teleportHandleToPart(part)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then
+        local bp = LocalPlayer:FindFirstChild("Backpack")
+        if bp then
+            tool = bp:FindFirstChildOfClass("Tool")
+            if tool then
+                char.Humanoid:EquipTool(tool)
+                task.wait(0.1)
+                tool = char:FindFirstChildOfClass("Tool")
+            end
+        end
+    end
+    
+    if not tool then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "No tool!", Duration = 2 })
+        return
+    end
+    
+    local handle = tool:FindFirstChild("Handle")
+    if not handle then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "No Handle!", Duration = 2 })
+        return
+    end
+    
+    local originalCF = handle.CFrame
+    handle.CFrame = part.CFrame
+    task.wait(0.05)
+    handle.CFrame = originalCF
+end
+
+local function teleportHandleToPlayer(player)
+    if not player or not player.Character then return end
+    for _, part in ipairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            teleportHandleToPart(part)
+            task.wait(0.02)
+        end
+    end
+end
+
+local function isPlayerAlive(player)
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 0
+end
+
+local function velocityBypasser()
+    while true do
+        if velocityEnabled and flingTargetPlayer then
+            RunService.Heartbeat:Wait()
+            local character = LocalPlayer.Character
+            local root = getRoot(character)
+            local vel, movel = nil, 0.1
+
+            while velocityEnabled and flingTargetPlayer and not (character and character.Parent and root and root.Parent) do
+                RunService.Heartbeat:Wait()
+                character = LocalPlayer.Character
+                root = getRoot(character)
+            end
+
+            if not velocityEnabled or not flingTargetPlayer then return end
+
+            vel = root.Velocity
+            root.Velocity = vel * 1000000 + Vector3.new(0, 1000000, 0)
+
+            RunService.RenderStepped:Wait()
+            if velocityEnabled and flingTargetPlayer and character and character.Parent and root and root.Parent then
+                root.Velocity = vel
+            end
+
+            RunService.Stepped:Wait()
+            if velocityEnabled and flingTargetPlayer and character and character.Parent and root and root.Parent then
+                root.Velocity = vel + Vector3.new(0, movel, 0)
+                movel = movel * -1
+            end
+        else
+            task.wait(0.1)
+        end
+    end
+end
+
+local function runHandleFling(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Target not found!", Duration = 2 })
+        return
+    end
+    
+    if not isPlayerAlive(targetPlayer) then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Target is dead!", Duration = 2 })
+        return
+    end
+    
+    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local initialVelocity = hrp.Velocity.Magnitude or 0
+    local attempts = 0
+    
+    while flingEnabled and targetPlayer and targetPlayer.Parent and isPlayerAlive(targetPlayer) and (hrp.Velocity.Magnitude - initialVelocity) < 50 and attempts < 50 do
+        teleportHandleToPlayer(targetPlayer)
+        task.wait(0.1)
+        hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        attempts = attempts + 1
+    end
+    
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Fling completed!", Duration = 2 })
+end
+
+coroutine.wrap(velocityBypasser)()
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 3/4
@@ -390,110 +496,148 @@ end
 
 -- ================= ИНТЕРФЕЙС ЭЛЕМЕНТЫ =================
 
+-- Вкладка: Combat
 CombatTab:CreateToggle({
-   Name = "Авто-подбор Пистолета",
+   Name = "Auto Grab Gun",
    CurrentValue = false,
    Flag = "AutoGrabToggle",
    Callback = function(Value) getgenv().AutoGrabGunEnabled = Value end,
 })
 
 CombatTab:CreateButton({
-   Name = "Флинг Убийцы",
+   Name = "Kill Murderer",
    Callback = function()
-       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-       getgenv().flingTarget(m)
+       local murderer = GetMurderer()
+       if not murderer then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 3 })
+           return
+       end
+       
+       if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+           return
+       end
+       
+       local hrp = LocalPlayer.Character.HumanoidRootPart
+       repeat
+           if murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
+               hrp.CFrame = murderer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+               task.wait(0.1)
+           end
+       until not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0
+       
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer killed!", Duration = 3 })
    end,
 })
 
 CombatTab:CreateButton({
-   Name = "Флинг Шерифа",
+   Name = "Kill All Players",
+   Callback = function()
+       if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+           return
+       end
+       
+       local hrp = LocalPlayer.Character.HumanoidRootPart
+       
+       for _, victim in pairs(Players:GetPlayers()) do
+           if victim == LocalPlayer then continue end
+           if not victim.Character or not victim.Character:FindFirstChild("HumanoidRootPart") then
+               continue
+           end
+           
+           if victim.Character:FindFirstChild("Humanoid") and victim.Character.Humanoid.Health <= 0 then
+               continue
+           end
+           
+           repeat
+               hrp.CFrame = victim.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1)
+               task.wait(0.1)
+           until not victim.Character or not victim.Character:FindFirstChild("Humanoid") or victim.Character.Humanoid.Health <= 0
+       end
+       
+       Rayfield:Notify({ Title = "CrystalHub", Content = "All players killed!", Duration = 3 })
+   end,
+})
+
+CombatTab:CreateButton({
+   Name = "Velocity Fling Murderer",
+   Callback = function()
+       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+       if not m then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
+           return
+       end
+       
+       flingTargetPlayer = m
+       velocityEnabled = true
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling activated!", Duration = 2 })
+       
+       task.wait(2)
+       velocityEnabled = false
+       flingTargetPlayer = nil
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling completed!", Duration = 2 })
+   end,
+})
+
+CombatTab:CreateButton({
+   Name = "Handle Fling Murderer",
+   Callback = function()
+       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+       if not m then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
+           return
+       end
+       
+       flingEnabled = true
+       runHandleFling(m)
+       flingEnabled = false
+   end,
+})
+
+CombatTab:CreateButton({
+   Name = "Velocity Fling Sheriff",
    Callback = function()
        local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
-       getgenv().flingTarget(s)
-   end,
-})
-
-CombatTab:CreateToggle({
-   Name = "Увеличение Хитбоксов",
-   CurrentValue = false,
-   Flag = "HitboxToggle",
-   Callback = function(Value)
-       getgenv().HitboxEnabled = Value
-       if not Value then
-           for _, p in ipairs(Players:GetPlayers()) do
-               if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                   p.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-                   p.Character.HumanoidRootPart.Transparency = 1
-               end
-           end
+       if not s then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
+           return
        end
+       
+       flingTargetPlayer = s
+       velocityEnabled = true
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling activated!", Duration = 2 })
+       
+       task.wait(2)
+       velocityEnabled = false
+       flingTargetPlayer = nil
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Velocity Fling completed!", Duration = 2 })
    end,
 })
 
-CombatTab:CreateSlider({
-   Name = "Размер Хитбокса",
-   Range = {2, 15},
-   Increment = 1,
-   Suffix = " studs",
-   CurrentValue = 5,
-   Flag = "HitboxSizeSlider",
-   Callback = function(Value) getgenv().HitboxSize = Value end,
+CombatTab:CreateButton({
+   Name = "Handle Fling Sheriff",
+   Callback = function()
+       local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
+       if not s then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
+           return
+       end
+       
+       flingEnabled = true
+       runHandleFling(s)
+       flingEnabled = false
+   end,
 })
 
 CombatTab:CreateToggle({
-   Name = "Кнопка Выстрела",
+   Name = "Show Shot Button",
    CurrentValue = false,
    Flag = "AutoShotToggle",
    Callback = function(Value) getgenv().toggleShotButton(Value) end,
 })
 
-SilentTab:CreateToggle({
-   Name = "Silent Aim",
-   CurrentValue = false,
-   Flag = "SilentAimToggle",
-   Callback = function(Value) getgenv().SilentAimEnabled = Value end,
-})
-
-SilentTab:CreateDropdown({
-   Name = "Цель",
-   Options = {"Убийца", "Шериф", "Все"},
-   CurrentOption = {"Убийца"},
-   MultipleOptions = false,
-   Flag = "SilentAimTargetDropdown",
-   Callback = function(Option)
-       getgenv().SilentAimTargetMode = type(Option) == "table" and Option[1] or Option
-   end,
-})
-
-SilentTab:CreateToggle({
-   Name = "Предикшн",
-   CurrentValue = true,
-   Flag = "PredictionToggle",
-   Callback = function(Value) getgenv().SilentAimPrediction = Value end,
-})
-
-SilentTab:CreateSlider({
-   Name = "Коэффициент",
-   Range = {0, 0.5},
-   Increment = 0.01,
-   Suffix = " sec",
-   CurrentValue = 0.165,
-   Flag = "PredictionSlider",
-   Callback = function(Value) getgenv().SilentAimPredictionAmount = Value end,
-})
-
-SilentTab:CreateSlider({
-   Name = "Шанс попадания",
-   Range = {10, 100},
-   Increment = 5,
-   Suffix = "%",
-   CurrentValue = 100,
-   Flag = "HitChanceSlider",
-   Callback = function(Value) getgenv().SilentAimHitChance = Value end,
-})
-
+-- Вкладка: Auto Farm
 FarmTab:CreateToggle({
-   Name = "Автофарм монет",
+   Name = "Auto Farm Coins",
    CurrentValue = false,
    Flag = "AutoFarmToggle",
    Callback = function(Value)
@@ -504,20 +648,19 @@ FarmTab:CreateToggle({
            end
            if getgenv().currentTween then getgenv().currentTween:Cancel() end
            getgenv().isFarming = false
-           stopFlying()
        end
    end,
 })
 
 FarmTab:CreateToggle({
-   Name = "Обходить убийцу",
+   Name = "Avoid Murderer",
    CurrentValue = true,
    Flag = "SmartFarmToggle",
    Callback = function(Value) getgenv().SmartFarm = Value end,
 })
 
 FarmTab:CreateSlider({
-   Name = "Скорость фарма",
+   Name = "Farm Speed",
    Range = {15, 50},
    Increment = 1,
    Suffix = " speed",
@@ -526,44 +669,36 @@ FarmTab:CreateSlider({
    Callback = function(Value) getgenv().FarmSpeed = Value end,
 })
 
--- ================= ТЕЛЕПОРТЫ (БЕЗ ЭМОДЗИ) =================
+-- ================= ТЕЛЕПОРТЫ (ИЗ MARSINSANITY, БЕЗ ЭМОДЗИ) =================
 TeleportTab:CreateButton({
-   Name = "Teleport to Lobby",
+   Name = "TP to Lobby",
    Callback = function()
-       local lobby = Workspace:FindFirstChild("Lobby") or Workspace:FindFirstChild("LobbyMap")
-       if lobby and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-           LocalPlayer.Character.HumanoidRootPart.CFrame = lobby:GetModelCFrame() + Vector3.new(0, 5, 0)
-       else
-           LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108.5, 145, 0.6)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Lobby", Duration = 2 })
-       end
+       LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108.5, 145, 0.6)
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Lobby", Duration = 2 })
    end,
 })
 
 TeleportTab:CreateButton({
-   Name = "Teleport to Map Spawn",
+   Name = "TP to Map Spawn",
    Callback = function()
-       local success = false
        for _, child in ipairs(Workspace:GetDescendants()) do
            if child.Name == "Spawns" and child:FindFirstChild("Spawn") then
                LocalPlayer.Character.HumanoidRootPart.CFrame = child.Spawn.CFrame
-               success = true
                Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Map", Duration = 2 })
-               break
+               return
            end
        end
-       if not success then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Spawn not found!", Duration = 2 })
-       end
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Spawn not found!", Duration = 2 })
    end,
 })
 
 TeleportTab:CreateButton({
-   Name = "Teleport to Murderer",
+   Name = "TP to Murderer",
    Callback = function()
        local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
        if m and m.Character and m.Character:FindFirstChild("HumanoidRootPart") then
-           LocalPlayer.Character.HumanoidRootPart.CFrame = m.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 3)
+           LocalPlayer.Character.HumanoidRootPart.CFrame = m.Character.HumanoidRootPart.CFrame
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Murderer", Duration = 2 })
        else
            Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
        end
@@ -571,30 +706,55 @@ TeleportTab:CreateButton({
 })
 
 TeleportTab:CreateButton({
-   Name = "Teleport to Sheriff",
+   Name = "TP to Sheriff",
    Callback = function()
        local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
        if s and s.Character and s.Character:FindFirstChild("HumanoidRootPart") then
-           LocalPlayer.Character.HumanoidRootPart.CFrame = s.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 3)
+           LocalPlayer.Character.HumanoidRootPart.CFrame = s.Character.HumanoidRootPart.CFrame
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Sheriff", Duration = 2 })
        else
            Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
        end
    end,
 })
 
+TeleportTab:CreateTextBox({
+   Name = "TP to Player",
+   PlaceholderText = "Enter player name",
+   CurrentValue = "",
+   Flag = "TPPlayerName",
+   Callback = function(Value)
+       for _, v in pairs(Players:GetPlayers()) do
+           if string.lower(string.sub(v.Name, 1, string.len(Value))) == string.lower(Value) then
+               if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                   LocalPlayer.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame
+                   Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to " .. v.Name, Duration = 2 })
+               end
+               return
+           end
+       end
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Player not found!", Duration = 2 })
+   end,
+})
+-- =================================================================
+--                CRYSTALHUB MM2 ULTIMATE EDITION
+--                           PART 4/4
+-- =================================================================
+
+-- Вкладка: Visuals
 VisualsTab:CreateToggle({
-   Name = "ESP Ролей",
+   Name = "ESP Roles (Box)",
    CurrentValue = false,
    Flag = "ESPToggle",
    Callback = function(Value)
        getgenv().ESPEnabled = Value
        if not Value then
            for _, p in ipairs(Players:GetPlayers()) do
-               if p.Character then
-                   if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
-                   if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
-                   if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
-                       p.Character.Head.RoleTag:Destroy()
+               if p.Character and p.Character:FindFirstChild("Head") then
+                   for _, child in ipairs(p.Character.Head:GetChildren()) do
+                       if child:IsA("BoxHandleAdornment") then
+                           child:Destroy()
+                       end
                    end
                end
            end
@@ -603,7 +763,7 @@ VisualsTab:CreateToggle({
 })
 
 VisualsTab:CreateToggle({
-   Name = "ESP Пистолета",
+   Name = "ESP Gun Drop",
    CurrentValue = false,
    Flag = "GunESPToggle",
    Callback = function(Value)
@@ -619,6 +779,7 @@ VisualsTab:CreateToggle({
    end,
 })
 
+-- Вкладка: Player
 PlayerTab:CreateToggle({
    Name = "Noclip",
    CurrentValue = false,
@@ -635,86 +796,68 @@ PlayerTab:CreateSlider({
    Flag = "SpeedSlider",
    Callback = function(Value) getgenv().CustomSpeed = Value end,
 })
--- =================================================================
---                CRYSTALHUB MM2 ULTIMATE EDITION
---                           PART 4/4
--- =================================================================
 
--- ================= ESP ИГРОКОВ (ОПТИМИЗИРОВАННЫЙ) =================
-local function updateESP()
-    if not getgenv().ESPEnabled or not getgenv().isInRound() then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p.Character then
-                if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
-                if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
-                if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
-                    p.Character.Head.RoleTag:Destroy()
-                end
-            end
+PlayerTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 200},
+   Increment = 1,
+   Suffix = " power",
+   CurrentValue = 50,
+   Flag = "JumpSlider",
+   Callback = function(Value) getgenv().CustomJump = Value end,
+})
+
+-- ================= ESP (ИЗ MURDER_MYSTERY_2-SIMPLE_ESP) =================
+local function createESP(player)
+    if player == LocalPlayer then return end
+    if not player.Character or not player.Character:FindFirstChild("Head") then return end
+    
+    for _, child in ipairs(player.Character.Head:GetChildren()) do
+        if child:IsA("BoxHandleAdornment") then
+            child:Destroy()
         end
-        return
     end
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        if not p.Character then continue end
-        
-        local hum = p.Character:FindFirstChild("Humanoid")
-        if not hum or hum.Health <= 0 then
-            if p.Character:FindFirstChild("G_H") then p.Character.G_H:Destroy() end
-            if p.Character:FindFirstChild("RoleESP") then p.Character.RoleESP:Destroy() end
-            if p.Character.Head and p.Character.Head:FindFirstChild("RoleTag") then
-                p.Character.Head.RoleTag:Destroy()
-            end
-            continue
-        end
-
-        local color = getgenv().playerRoles[p] or getgenv().COLOR_INNOCENT
-        
-        local hl = p.Character:FindFirstChild("G_H")
-        if not hl then
-            hl = Instance.new("Highlight")
-            hl.Name = "G_H"
-            hl.Adornee = p.Character
-            hl.Parent = p.Character
-            hl.FillTransparency = 0.3
-            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        end
-        hl.FillColor = color
-        hl.OutlineColor = color
-
-        local tag = p.Character.Head:FindFirstChild("RoleTag")
-        if not tag then
-            tag = Instance.new("BillboardGui")
-            tag.Name = "RoleTag"
-            tag.Size = UDim2.new(0, 80, 0, 20)
-            tag.StudsOffset = Vector3.new(0, 2.5, 0)
-            tag.AlwaysOnTop = true
-            tag.Parent = p.Character.Head
-            local label = Instance.new("TextLabel")
-            label.Name = "Text"
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextScaled = true
-            label.Font = Enum.Font.SourceSansBold
-            label.Parent = tag
-        end
-
-        local roleName = "INNOCENT"
-        if color == getgenv().COLOR_MURDERER then roleName = "MURDERER" end
-        if color == getgenv().COLOR_SHERIFF then roleName = "SHERIFF" end
-        tag.Text.Text = roleName
-        tag.Text.TextColor3 = color
+    
+    local esp = Instance.new("BoxHandleAdornment")
+    esp.Parent = player.Character.Head
+    esp.Size = Vector3.new(1, 1, 1)
+    esp.AlwaysOnTop = true
+    esp.Adornee = player.Character.Head
+    esp.Visible = true
+    esp.ZIndex = 2
+    
+    local color = getgenv().playerRoles[player]
+    if color == getgenv().COLOR_MURDERER then
+        esp.Color3 = Color3.new(1, 0, 0)
+    elseif color == getgenv().COLOR_SHERIFF then
+        esp.Color3 = Color3.new(0, 0, 1)
+    else
+        esp.Color3 = Color3.new(0, 1, 0)
     end
 end
 
 task.spawn(function()
-    while task.wait(0.3) do
-        updateESP()
+    while task.wait(0.5) do
+        if not getgenv().ESPEnabled then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("Head") then
+                    for _, child in ipairs(p.Character.Head:GetChildren()) do
+                        if child:IsA("BoxHandleAdornment") then
+                            child:Destroy()
+                        end
+                    end
+                end
+            end
+            continue
+        end
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            createESP(p)
+        end
     end
 end)
 
--- ================= ESP ПИСТОЛЕТА =================
+-- ================= ESP GUN DROP =================
 local function updateGunESP()
     if not getgenv().GunESPEnabled or not getgenv().isInRound() then
         for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -809,99 +952,63 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ================= АВТОФАРМ (ПЛАВНЫЙ ПОЛЁТ) =================
-local flyToggle = false
-local flyBodyVelocity = nil
-local flyBodyGyro = nil
-
-local function stopFlying()
-    flyToggle = false
-    if flyBodyVelocity then flyBodyVelocity:Destroy() end
-    if flyBodyGyro then flyBodyGyro:Destroy() end
-    flyBodyVelocity = nil
-    flyBodyGyro = nil
-    
-    local char = LocalPlayer.Character
-    if char then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = false
-        end
-    end
-end
-
-local function startFlying(targetPos)
+-- ================= ПЛАВНЫЙ ПОЛЁТ (ИЗ ZENOSSCRIPT) =================
+local function flyToPosition(targetPos)
     local char = LocalPlayer.Character
     if not char then return end
     
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not hrp or not humanoid then return end
+    if not hrp then return end
     
-    flyToggle = true
-    humanoid.PlatformStand = true
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.P = 9e4
+    bv.Parent = hrp
     
-    flyBodyVelocity = Instance.new("BodyVelocity")
-    flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    flyBodyVelocity.P = 9e4
-    flyBodyVelocity.Parent = hrp
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bg.P = 9e4
+    bg.Parent = hrp
     
-    flyBodyGyro = Instance.new("BodyGyro")
-    flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    flyBodyGyro.P = 9e4
-    flyBodyGyro.Parent = hrp
+    local distance = (targetPos - hrp.Position).Magnitude
+    local speed = math.min(distance / 0.3, 60)
     
-    local startPos = hrp.Position
-    local distance = (targetPos - startPos).Magnitude
-    local speed = math.min(distance / 0.3, 80)
-    
-    while flyToggle and hrp and hrp.Parent do
-        local currentPos = hrp.Position
-        local direction = (targetPos - currentPos).Unit
-        local distToTarget = (targetPos - currentPos).Magnitude
-        
-        if distToTarget < 2 then
-            break
-        end
-        
-        local speedMultiplier = math.min(distToTarget / 10, 1)
-        local currentSpeed = speed * (0.5 + speedMultiplier * 0.5)
-        
-        flyBodyVelocity.Velocity = direction * currentSpeed
-        flyBodyGyro.CFrame = CFrame.lookAt(hrp.Position, targetPos)
-        
+    local startTime = tick()
+    while (hrp.Position - targetPos).Magnitude > 2 and tick() - startTime < 5 do
+        local direction = (targetPos - hrp.Position).Unit
+        bv.Velocity = direction * speed
+        bg.CFrame = CFrame.lookAt(hrp.Position, targetPos)
         task.wait()
     end
     
-    stopFlying()
+    bv:Destroy()
+    bg:Destroy()
 end
 
+-- ================= АВТОФАРМ (ИЗ MARSINSANITY + ZENOSSCRIPT) =================
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait(0.25)
         if getgenv().AutoFarmEnabled and getgenv().isInRound() and getgenv().isAlive() then
             local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then
-                task.wait(0.5)
+            if not char or not char:FindFirstChild("HumanoidRootPart") then
                 continue
             end
             
             local hrp = char.HumanoidRootPart
             
-            local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
-            local murdPos = nil
-            if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
-                murdPos = murderer.Character.HumanoidRootPart.Position
-            end
-
             local bestCoin = nil
             local bestDist = math.huge
             
             for _, obj in ipairs(Workspace:GetDescendants()) do
                 if obj:IsA("BasePart") and (obj.Name:lower():find("coin") or obj.Name:lower():find("монет")) then
-                    if getgenv().SmartFarm and murdPos then
-                        if (obj.Position - murdPos).Magnitude < 30 then
-                            continue
+                    if getgenv().SmartFarm then
+                        local murderer = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+                        if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
+                            local murdPos = murderer.Character.HumanoidRootPart.Position
+                            if (obj.Position - murdPos).Magnitude < 30 then
+                                continue
+                            end
                         end
                     end
                     
@@ -912,53 +1019,15 @@ task.spawn(function()
                     end
                 end
             end
-
+            
             if bestCoin then
-                startFlying(bestCoin.Position)
-                task.wait(0.05)
-                
-                local flyDirection = (hrp.Position - (murdPos or Vector3.new(0, 0, 0))).Unit
-                if flyDirection.Magnitude < 0.1 then
-                    flyDirection = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1)).Unit
-                end
-                
-                hrp.CFrame = hrp.CFrame + (flyDirection * 15)
-                stopFlying()
-                
-                task.wait(0.05)
-            else
-                stopFlying()
-                task.wait(0.5)
+                flyToPosition(bestCoin.Position)
+                task.wait(0.1)
             end
         else
-            stopFlying()
             task.wait(0.5)
         end
     end
 end)
 
--- ================= ХИТБОКСЫ =================
-RunService.RenderStepped:Connect(function()
-    if getgenv().HitboxEnabled then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = p.Character.HumanoidRootPart
-                hrp.Size = Vector3.new(getgenv().HitboxSize, getgenv().HitboxSize, getgenv().HitboxSize)
-                hrp.Transparency = 0.7
-                hrp.Color = Color3.fromRGB(255, 0, 0)
-                hrp.CanCollide = false
-            end
-        end
-    end
-end)
-
 print("CrystalHub MM2 Ultimate - Fully Loaded!")
-PlayerTab:CreateSlider({
-   Name = "Jump Power",
-   Range = {50, 200},
-   Increment = 1,
-   Suffix = " power",
-   CurrentValue = 50,
-   Flag = "JumpSlider",
-   Callback = function(Value) getgenv().CustomJump = Value end,
-})
