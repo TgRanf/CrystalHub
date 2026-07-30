@@ -1,6 +1,6 @@
 local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/main/WindUI"))()
 
-getgenv().Window = WindUI:CreateWindow({
+local Window = WindUI:CreateWindow({
     Title = "CrystalHub | MM2 Ultimate",
     Icon = "sparkles",
     Author = "Mobile & PC Edition",
@@ -12,7 +12,7 @@ getgenv().Window = WindUI:CreateWindow({
     HasOutline = true
 })
 
-getgenv().Window:EditOpenButton({
+Window:AddOpenButton({
     Title = "CrystalHub",
     Icon = "sparkles",
     CornerRadius = UDim.new(0, 10),
@@ -20,11 +20,11 @@ getgenv().Window:EditOpenButton({
     Color = ColorSequence.new(Color3.fromRGB(147, 51, 234), Color3.fromRGB(79, 70, 229))
 })
 
-getgenv().Tabs = {
-    Combat = getgenv().Window:Tab({ Title = "Бой", Icon = "swords" }),
-    Farm = getgenv().Window:Tab({ Title = "Автофарм", Icon = "coins" }),
-    Visuals = getgenv().Window:Tab({ Title = "Визуалы", Icon = "eye" }),
-    Player = getgenv().Window:Tab({ Title = "Игрок", Icon = "user" })
+local Tabs = {
+    Combat = Window:Tab({ Title = "Бой", Icon = "swords" }),
+    Farm = Window:Tab({ Title = "Автофарм", Icon = "coins" }),
+    Visuals = Window:Tab({ Title = "Визуалы", Icon = "eye" }),
+    Player = Window:Tab({ Title = "Игрок", Icon = "user" })
 }
 
 local Players = game:GetService("Players")
@@ -317,28 +317,21 @@ getgenv().getClosestInFOV = function()
     end
     return closestTarget
 end
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
 
-local Tabs = getgenv().Tabs
-
-Tabs.Combat:Toggle({
+-- Создание интерфейса
+Tabs.Combat:AddToggle({
     Title = "Отображать кнопку Auto-Shot (🎯)",
-    Value = false,
+    Default = false,
     Callback = function(Value) getgenv().toggleShotButton(Value) end
 })
 
-Tabs.Combat:Button({
+Tabs.Combat:AddButton({
     Title = "Авто-подбор Пистолета (Auto-Grab Gun)",
     Desc = "Телепортирует к выпавшему песту и возвращает назад",
     Callback = function() getgenv().autoGrabGun() end
 })
 
-Tabs.Combat:Button({
+Tabs.Combat:AddButton({
     Title = "Флинг Убийцы (Fling Murderer)",
     Callback = function()
         local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
@@ -346,7 +339,7 @@ Tabs.Combat:Button({
     end
 })
 
-Tabs.Combat:Button({
+Tabs.Combat:AddButton({
     Title = "Флинг Шерифа (Fling Sheriff)",
     Callback = function()
         local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
@@ -354,26 +347,26 @@ Tabs.Combat:Button({
     end
 })
 
-Tabs.Combat:Toggle({
+Tabs.Combat:AddToggle({
     Title = "Включить Аимбот",
-    Value = false,
+    Default = false,
     Callback = function(Value) getgenv().AimbotEnabled = Value end
 })
 
-Tabs.Combat:Toggle({
+Tabs.Combat:AddToggle({
     Title = "Проверка стен (Visible Check)",
-    Value = true,
+    Default = true,
     Callback = function(Value) getgenv().VisibleCheckEnabled = Value end
 })
 
-Tabs.Combat:Dropdown({
+Tabs.Combat:AddDropdown({
     Title = "Цель аимбота (Кого атаковать)",
     Values = {"Все", "Только Убийца", "Только Шериф"},
-    Value = "Все",
+    Default = "Все",
     Callback = function(Value) getgenv().AimbotTargetMode = Value end
 })
 
-Tabs.Combat:Slider({
+Tabs.Combat:AddSlider({
     Title = "Радиус захвата FOV",
     Min = 50,
     Max = 300,
@@ -381,9 +374,9 @@ Tabs.Combat:Slider({
     Callback = function(Value) getgenv().AimbotFOV = Value end
 })
 
-Tabs.Farm:Toggle({
+Tabs.Farm:AddToggle({
     Title = "Включить Автофарм Монет",
-    Value = false,
+    Default = false,
     Callback = function(Value)
         getgenv().AutoFarmEnabled = Value
         if not Value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -393,7 +386,7 @@ Tabs.Farm:Toggle({
     end
 })
 
-Tabs.Farm:Slider({
+Tabs.Farm:AddSlider({
     Title = "Скорость фарма",
     Min = 15,
     Max = 50,
@@ -401,9 +394,9 @@ Tabs.Farm:Slider({
     Callback = function(Value) getgenv().FarmSpeed = Value end
 })
 
-Tabs.Visuals:Toggle({
+Tabs.Visuals:AddToggle({
     Title = "Включить ESP (Мгновенные Роли)",
-    Value = false,
+    Default = false,
     Callback = function(Value)
         getgenv().ESPEnabled = Value
         for _, p in ipairs(Players:GetPlayers()) do
@@ -425,13 +418,13 @@ Tabs.Visuals:Toggle({
     end
 })
 
-Tabs.Player:Toggle({
+Tabs.Player:AddToggle({
     Title = "Noclip (Сквозь стены)",
-    Value = false,
+    Default = false,
     Callback = function(Value) getgenv().NoclipEnabled = Value end
 })
 
-Tabs.Player:Slider({
+Tabs.Player:AddSlider({
     Title = "Скорость Бега",
     Min = 16,
     Max = 120,
@@ -439,7 +432,7 @@ Tabs.Player:Slider({
     Callback = function(Value) getgenv().CustomSpeed = Value end
 })
 
-Tabs.Player:Slider({
+Tabs.Player:AddSlider({
     Title = "Высота Прыжка",
     Min = 50,
     Max = 200,
@@ -447,6 +440,7 @@ Tabs.Player:Slider({
     Callback = function(Value) getgenv().CustomJump = Value end
 })
 
+-- Фоновые процессы
 RunService.RenderStepped:Connect(function()
     if getgenv().AimbotEnabled then
         local target = getgenv().getClosestInFOV()
