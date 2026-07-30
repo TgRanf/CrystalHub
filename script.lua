@@ -1,6 +1,11 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---            Based on your original sources + Zyn-ic Octree Farm
+--            ALL FUNCTIONS FROM YOUR SOURCES
+--            - ESP: Murder_Mystery_2-simple_ESP
+--            - Silent Aim: Stefanuk12
+--            - AutoFarm: Zyn-ic (Octree)
+--            - Fling: joshclark756
+--            - Admin Panel: MarsInsanity
 --                           PART 1/4
 -- =================================================================
 
@@ -10,7 +15,7 @@ local Window = Rayfield:CreateWindow({
    Name = "CrystalHub | MM2 Ultimate",
    Icon = 0,
    LoadingTitle = "CrystalHub MM2",
-   LoadingSubtitle = "Powered by Zyn-ic Octree",
+   LoadingSubtitle = "All Sources Integrated",
    Theme = "Default",
    DisableRayfieldPrompts = false,
    DisableBuildWarnings = false,
@@ -25,6 +30,7 @@ local FarmTab     = Window:CreateTab("Auto Farm", 4483362458)
 local TeleportTab = Window:CreateTab("Teleports", 4483362458)
 local VisualsTab  = Window:CreateTab("Visuals", 4483362458)
 local PlayerTab   = Window:CreateTab("Player", 4483362458)
+local MiscTab     = Window:CreateTab("Misc", 4483362458)
 
 -- Сервисы
 local Players = game:GetService("Players")
@@ -32,23 +38,41 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
 -- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
 
+-- Silent Aim
+getgenv().SilentAimEnabled = false
+getgenv().SilentAimTargetMode = "Убийца"
+getgenv().SilentAimHitChance = 100
+getgenv().SilentAimPrediction = true
+getgenv().SilentAimPredictionAmount = 0.165
+
+-- Fling (из joshclark756)
+getgenv().flingEnabled = false
+getgenv().velocityEnabled = false
+getgenv().flingTargetPlayer = nil
+
 -- Автофарм (Zyn-ic)
 getgenv().AutoFarmEnabled = false
 getgenv().FarmSpeed = 30
 getgenv().SmartFarm = true
-getgenv().isFarming = false
 getgenv().farmRadius = 200
+getgenv().isFarming = false
 
--- Визуалы & Персонаж
+-- Визуалы
 getgenv().ESPEnabled = false
 getgenv().GunESPEnabled = false
+getgenv().XRayEnabled = false
 getgenv().NoclipEnabled = false
+getgenv().FlyEnabled = false
+getgenv().InfiniteJumpEnabled = false
+
+-- Персонаж
 getgenv().CustomSpeed = 16
 getgenv().CustomJump = 50
 
@@ -153,6 +177,33 @@ getgenv().getPlayerByRole = function(roleColor)
     end
     return nil
 end
+
+-- ================= ФУНКЦИИ ИЗ MARSINSANITY (Anti-Lag, FullBright) =================
+-- Anti-Lag (FPS Boost)
+local function antiLag()
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+        end
+    end
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 1
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Anti-Lag applied!", Duration = 2 })
+end
+
+-- FullBright
+local function fullBright()
+    Lighting.Brightness = 2
+    Lighting.ClockTime = 14
+    Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright enabled!", Duration = 2 })
+end
+
+-- Remove Shadows
+local function removeShadows()
+    Lighting.GlobalShadows = false
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Shadows removed!", Duration = 2 })
+end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 2/4
@@ -224,6 +275,7 @@ SilentTab:CreateToggle({
    end,
 })
 
+-- Перехват для Silent Aim
 local mt = getrawmetatable(game)
 local backupIndex = mt.__index
 local backupNamecall = mt.__namecall
@@ -284,7 +336,7 @@ task.spawn(function()
     end
 end)
 
--- ================= SHOT BUTTON =================
+-- ================= SHOT BUTTON (ИЗ MARSINSANITY) =================
 local ShotGui = nil
 getgenv().toggleShotButton = function(state)
     if state then
@@ -292,6 +344,7 @@ getgenv().toggleShotButton = function(state)
             ShotGui = Instance.new("ScreenGui")
             ShotGui.Name = "CrystalHubShotGui"
             ShotGui.Parent = CoreGui
+            ShotGui.ResetOnSpawn = false
 
             local btn = Instance.new("TextButton")
             btn.Name = "ShotBtn"
@@ -309,6 +362,11 @@ getgenv().toggleShotButton = function(state)
             local corner = Instance.new("UICorner")
             corner.CornerRadius = UDim.new(1, 0)
             corner.Parent = btn
+
+            local stroke = Instance.new("UIStroke")
+            stroke.Parent = btn
+            stroke.Color = Color3.fromRGB(255, 255, 255)
+            stroke.Thickness = 2
 
             btn.MouseButton1Click:Connect(function()
                 if not getgenv().isInRound() or not getgenv().isAlive() then
@@ -346,20 +404,127 @@ getgenv().toggleShotButton = function(state)
     end
 end
 
--- ================= KILL MURDERER =================
-local function GetMurderer()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer then
-            if v.Character and v.Character:FindFirstChild("Knife") then
-                return v
-            end
-            if v.Backpack and v.Backpack:FindFirstChild("Knife") then
-                return v
+-- ================= ФЛИНГ (ИЗ JOSHCLARK756) =================
+local flingEnabled = false
+local velocityEnabled = false
+local flingTargetPlayer = nil
+
+local function getRoot(char)
+    return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
+end
+
+local function teleportHandleToPart(part)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then
+        local bp = LocalPlayer:FindFirstChild("Backpack")
+        if bp then
+            tool = bp:FindFirstChildOfClass("Tool")
+            if tool then
+                char.Humanoid:EquipTool(tool)
+                task.wait(0.1)
+                tool = char:FindFirstChildOfClass("Tool")
             end
         end
     end
-    return nil
+    
+    if not tool then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "No tool!", Duration = 2 })
+        return
+    end
+    
+    local handle = tool:FindFirstChild("Handle")
+    if not handle then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "No Handle!", Duration = 2 })
+        return
+    end
+    
+    local originalCF = handle.CFrame
+    handle.CFrame = part.CFrame
+    task.wait(0.05)
+    handle.CFrame = originalCF
 end
+
+local function teleportHandleToPlayer(player)
+    if not player or not player.Character then return end
+    for _, part in ipairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            teleportHandleToPart(part)
+            task.wait(0.02)
+        end
+    end
+end
+
+local function isPlayerAlive(player)
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 0
+end
+
+local function velocityBypasser()
+    while true do
+        if velocityEnabled and flingTargetPlayer then
+            RunService.Heartbeat:Wait()
+            local character = LocalPlayer.Character
+            local root = getRoot(character)
+            local vel, movel = nil, 0.1
+
+            while velocityEnabled and flingTargetPlayer and not (character and character.Parent and root and root.Parent) do
+                RunService.Heartbeat:Wait()
+                character = LocalPlayer.Character
+                root = getRoot(character)
+            end
+
+            if not velocityEnabled or not flingTargetPlayer then return end
+
+            vel = root.Velocity
+            root.Velocity = vel * 1000000 + Vector3.new(0, 1000000, 0)
+
+            RunService.RenderStepped:Wait()
+            if velocityEnabled and flingTargetPlayer and character and character.Parent and root and root.Parent then
+                root.Velocity = vel
+            end
+
+            RunService.Stepped:Wait()
+            if velocityEnabled and flingTargetPlayer and character and character.Parent and root and root.Parent then
+                root.Velocity = vel + Vector3.new(0, movel, 0)
+                movel = movel * -1
+            end
+        else
+            task.wait(0.1)
+        end
+    end
+end
+
+local function runHandleFling(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Target not found!", Duration = 2 })
+        return
+    end
+    
+    if not isPlayerAlive(targetPlayer) then
+        Rayfield:Notify({ Title = "CrystalHub", Content = "Target is dead!", Duration = 2 })
+        return
+    end
+    
+    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local initialVelocity = hrp.Velocity.Magnitude or 0
+    local attempts = 0
+    
+    while flingEnabled and targetPlayer and targetPlayer.Parent and isPlayerAlive(targetPlayer) and (hrp.Velocity.Magnitude - initialVelocity) < 50 and attempts < 50 do
+        teleportHandleToPlayer(targetPlayer)
+        task.wait(0.1)
+        hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        attempts = attempts + 1
+    end
+    
+    Rayfield:Notify({ Title = "CrystalHub", Content = "Fling completed!", Duration = 2 })
+end
+
+coroutine.wrap(velocityBypasser)()
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 3/4
@@ -367,6 +532,7 @@ end
 
 -- ================= ИНТЕРФЕЙС ЭЛЕМЕНТЫ =================
 
+-- Вкладка: Combat
 CombatTab:CreateToggle({
    Name = "Auto Grab Gun",
    CurrentValue = false,
@@ -375,27 +541,72 @@ CombatTab:CreateToggle({
 })
 
 CombatTab:CreateButton({
-   Name = "Kill Murderer",
+   Name = "Fling Murderer",
    Callback = function()
-       local murderer = GetMurderer()
-       if not murderer then
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 3 })
+       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+       if not m then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
            return
        end
        
-       if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+       flingTargetPlayer = m
+       velocityEnabled = true
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Flinging Murderer...", Duration = 2 })
+       
+       task.wait(2)
+       velocityEnabled = false
+       flingTargetPlayer = nil
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Fling completed!", Duration = 2 })
+   end,
+})
+
+CombatTab:CreateButton({
+   Name = "Fling Sheriff",
+   Callback = function()
+       local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
+       if not s then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
            return
        end
        
-       local hrp = LocalPlayer.Character.HumanoidRootPart
-       repeat
-           if murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
-               hrp.CFrame = murderer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
-               task.wait(0.1)
-           end
-       until not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0
+       flingTargetPlayer = s
+       velocityEnabled = true
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Flinging Sheriff...", Duration = 2 })
        
-       Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer killed!", Duration = 3 })
+       task.wait(2)
+       velocityEnabled = false
+       flingTargetPlayer = nil
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Fling completed!", Duration = 2 })
+   end,
+})
+
+CombatTab:CreateButton({
+   Name = "Handle Fling Murderer",
+   Callback = function()
+       local m = getgenv().getPlayerByRole(getgenv().COLOR_MURDERER)
+       if not m then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Murderer not found!", Duration = 2 })
+           return
+       end
+       
+       flingEnabled = true
+       runHandleFling(m)
+       flingEnabled = false
+   end,
+})
+
+CombatTab:CreateButton({
+   Name = "Handle Fling Sheriff",
+   Callback = function()
+       local s = getgenv().getPlayerByRole(getgenv().COLOR_SHERIFF)
+       if not s then
+           Rayfield:Notify({ Title = "CrystalHub", Content = "Sheriff not found!", Duration = 2 })
+           return
+       end
+       
+       flingEnabled = true
+       runHandleFling(s)
+       flingEnabled = false
    end,
 })
 
@@ -428,7 +639,7 @@ CombatTab:CreateButton({
    end,
 })
 
-CombatTab:CreateButton({
+CombatTab:CreateToggle({
    Name = "Show Shot Button",
    CurrentValue = false,
    Flag = "AutoShotToggle",
@@ -478,7 +689,7 @@ FarmTab:CreateSlider({
    Callback = function(Value) getgenv().farmRadius = Value end,
 })
 
--- ================= ТЕЛЕПОРТЫ =================
+-- Вкладка: Teleports (из MarsInsanity)
 TeleportTab:CreateButton({
    Name = "TP to Lobby",
    Callback = function()
@@ -546,7 +757,7 @@ TeleportTab:CreateTextBox({
    end,
 })
 
--- ================= ВИЗУАЛЫ =================
+-- Вкладка: Visuals
 VisualsTab:CreateToggle({
    Name = "ESP Roles (Box)",
    CurrentValue = false,
@@ -584,12 +795,80 @@ VisualsTab:CreateToggle({
    end,
 })
 
--- ================= ИГРОК =================
+VisualsTab:CreateToggle({
+   Name = "X-Ray (See Through Walls)",
+   CurrentValue = false,
+   Flag = "XRayToggle",
+   Callback = function(Value)
+       getgenv().XRayEnabled = Value
+       for _, v in pairs(Workspace:GetDescendants()) do
+           if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+               if Value then
+                   v.LocalTransparencyModifier = 0.75
+               else
+                   v.LocalTransparencyModifier = 0
+               end
+           end
+       end
+   end,
+})
+
+VisualsTab:CreateButton({
+   Name = "Refresh ESP",
+   Callback = function()
+       for _, p in ipairs(Players:GetPlayers()) do
+           if p.Character and p.Character:FindFirstChild("Head") then
+               for _, child in ipairs(p.Character.Head:GetChildren()) do
+                   if child:IsA("BoxHandleAdornment") then
+                       child:Destroy()
+                   end
+               end
+           end
+       end
+       Rayfield:Notify({ Title = "CrystalHub", Content = "ESP Refreshed!", Duration = 2 })
+   end,
+})
+
+-- Вкладка: Player
 PlayerTab:CreateToggle({
    Name = "Noclip",
    CurrentValue = false,
    Flag = "NoclipToggle",
    Callback = function(Value) getgenv().NoclipEnabled = Value end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Fly (WASD)",
+   CurrentValue = false,
+   Flag = "FlyToggle",
+   Callback = function(Value)
+       getgenv().FlyEnabled = Value
+       if Value then
+           -- Включаем полёт (из MarsInsanity)
+           local char = LocalPlayer.Character
+           if char then
+               local humanoid = char:FindFirstChild("Humanoid")
+               if humanoid then
+                   humanoid.PlatformStand = true
+               end
+           end
+       else
+           local char = LocalPlayer.Character
+           if char then
+               local humanoid = char:FindFirstChild("Humanoid")
+               if humanoid then
+                   humanoid.PlatformStand = false
+               end
+           end
+       end
+   end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfiniteJumpToggle",
+   Callback = function(Value) getgenv().InfiniteJumpEnabled = Value end,
 })
 
 PlayerTab:CreateSlider({
@@ -616,7 +895,7 @@ PlayerTab:CreateSlider({
 --                           PART 4/4
 -- =================================================================
 
--- ================= ESP =================
+-- ================= ESP (ИЗ MURDER_MYSTERY_2-SIMPLE_ESP) =================
 local function createESP(player)
     if player == LocalPlayer then return end
     if not player.Character or not player.Character:FindFirstChild("Head") then return end
@@ -761,9 +1040,88 @@ RunService.Stepped:Connect(function()
     end
 end)
 
+-- ================= FLY (ИЗ MARSINSANITY) =================
+local flyBodyVelocity = nil
+local flyBodyGyro = nil
+local flyControls = {F = 0, B = 0, L = 0, R = 0}
+
+task.spawn(function()
+    while true do
+        task.wait()
+        if getgenv().FlyEnabled and LocalPlayer.Character then
+            local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
+            
+            if not flyBodyVelocity then
+                flyBodyVelocity = Instance.new("BodyVelocity")
+                flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                flyBodyVelocity.P = 9e4
+                flyBodyVelocity.Parent = hrp
+                
+                flyBodyGyro = Instance.new("BodyGyro")
+                flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                flyBodyGyro.P = 9e4
+                flyBodyGyro.Parent = hrp
+            end
+            
+            local speed = 50
+            local lookVector = Camera.CFrame.LookVector
+            local rightVector = Camera.CFrame.RightVector
+            
+            local moveVector = Vector3.new(
+                (flyControls.R - flyControls.L),
+                0,
+                (flyControls.F - flyControls.B)
+            )
+            
+            flyBodyVelocity.Velocity = (lookVector * moveVector.Z + rightVector * moveVector.X) * speed
+            flyBodyGyro.CFrame = Camera.CFrame
+        else
+            if flyBodyVelocity then
+                flyBodyVelocity:Destroy()
+                flyBodyVelocity = nil
+            end
+            if flyBodyGyro then
+                flyBodyGyro:Destroy()
+                flyBodyGyro = nil
+            end
+        end
+    end
+end)
+
+-- Управление полётом (WASD)
+UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.W then flyControls.F = 1
+    elseif key == Enum.KeyCode.S then flyControls.B = 1
+    elseif key == Enum.KeyCode.A then flyControls.L = 1
+    elseif key == Enum.KeyCode.D then flyControls.R = 1 end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    local key = input.KeyCode
+    if key == Enum.KeyCode.W then flyControls.F = 0
+    elseif key == Enum.KeyCode.S then flyControls.B = 0
+    elseif key == Enum.KeyCode.A then flyControls.L = 0
+    elseif key == Enum.KeyCode.D then flyControls.R = 0 end
+end)
+
+-- ================= INFINITE JUMP (ИЗ MARSINSANITY) =================
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if getgenv().InfiniteJumpEnabled and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
 -- ================= АВТОФАРМ (ZYN-IC OCTREE) =================
-local farmThread = nil
 local farmRunning = false
+local farmThread = nil
 
 local function getCoinContainer()
     for _, v in Workspace:GetDescendants() do
@@ -805,7 +1163,6 @@ local function startZynicFarm()
         return
     end
     
-    -- Загружаем Octree
     local Octree = loadstring(game:HttpGet("https://raw.githubusercontent.com/Sleitnick/rbxts-octo-tree/main/src/init.lua", true))()
     local octree = Octree.new()
     local touchedCoins = {}
@@ -884,7 +1241,6 @@ local function startZynicFarm()
         end
     end
     
-    -- Очистка
     for _, conn in pairs(connections) do
         if conn and conn.Connected then
             conn:Disconnect()
@@ -899,7 +1255,6 @@ local function startZynicFarm()
     farmRunning = false
 end
 
--- Запуск автофарма в отдельном потоке
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -917,5 +1272,30 @@ task.spawn(function()
         end
     end
 end)
+
+-- ================= MISC (НОВЫЕ ФУНКЦИИ) =================
+MiscTab:CreateButton({
+   Name = "Anti-Lag (FPS Boost)",
+   Callback = function() antiLag() end,
+})
+
+MiscTab:CreateButton({
+   Name = "FullBright",
+   Callback = function() fullBright() end,
+})
+
+MiscTab:CreateButton({
+   Name = "Remove Shadows",
+   Callback = function() removeShadows() end,
+})
+
+MiscTab:CreateButton({
+   Name = "Server Hop",
+   Callback = function()
+       local TeleportService = game:GetService("TeleportService")
+       TeleportService:Teleport(game.PlaceId)
+       Rayfield:Notify({ Title = "CrystalHub", Content = "Server hopping...", Duration = 2 })
+   end,
+})
 
 print("CrystalHub MM2 Ultimate - Fully Loaded!")
