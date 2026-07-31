@@ -1,6 +1,6 @@
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
---                ВСЕ ФУНКЦИИ ИЗ XHUB
+--                ВСЕ ФУНКЦИИ ИЗ MARSINSANITY MM2ADMINPANEL
 --                           PART 1/4
 -- =================================================================
 
@@ -29,28 +29,23 @@ local PlayerTab   = Window:CreateTab("Игрок", 4483362458)
 -- Сервисы
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
-local UserInputService = game:GetService("UserInputService")
 
--- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ (XHUB) =================
-local ESPEnabled = {
-    Murderer = false,
-    Sheriff = false,
-    DroppedGun = false,
-}
-
-local FarmCoinsEnabled = false
-local farmCooldown = 0.1
-local loopMovementAttributes = false
-local killAllEnabled = false
-local noclipEnabled = false
-local silentAimEnabled = false
+-- ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ (ИЗ MARSINSANITY) =================
+getgenv().AutoGrabGunEnabled = false
+getgenv().AutoFarmEnabled = false
+getgenv().ESPEnabled = false
+getgenv().NoclipEnabled = false
+getgenv().FlyEnabled = false
+getgenv().InfiniteJumpEnabled = false
+getgenv().XRayEnabled = false
+getgenv().CustomSpeed = 16
+getgenv().CustomJump = 50
 
 -- ================= ПРОВЕРКА СТАТУСА РАУНДА =================
 getgenv().isInRound = function()
@@ -67,492 +62,530 @@ getgenv().isInRound = function()
     return false
 end
 
--- ================= ОПРЕДЕЛЕНИЕ РОЛЕЙ (XHUB) =================
-local function GetPlayerRole(player)
-    if not player then return "Innocent" end
-    local backpack = player:FindFirstChild("Backpack")
-    local char = player.Character
-    
-    if (backpack and backpack:FindFirstChild("Gun")) or (char and char:FindFirstChild("Gun")) then
-        return "Sheriff"
-    elseif (backpack and backpack:FindFirstChild("Knife")) or (char and char:FindFirstChild("Knife")) then
-        return "Murderer"
-    end
-    return "Innocent"
-end
-
+-- ================= ОПРЕДЕЛЕНИЕ РОЛЕЙ (ИЗ MARSINSANITY) =================
 local function GetMurderer()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and GetPlayerRole(p) == "Murderer" then
-            return p
+    local plrs = game:GetService("Players")
+    for i, v in pairs(plrs:GetPlayers()) do
+        if v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife") then
+            return v
         end
     end
-    return nil
 end
 
 local function GetSheriff()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and GetPlayerRole(p) == "Sheriff" then
-            return p
+    local plrs = game:GetService("Players")
+    for i, v in pairs(plrs:GetPlayers()) do
+        if v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun") then
+            return v
         end
     end
-    return nil
 end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 2/4
 -- =================================================================
 
--- ================= ESP (XHUB) =================
-local function addHighlight(part, color, text)
-    if not part then return end
+-- ================= FLY (ИЗ MARSINSANITY) =================
+local flying = false
+local lplayer = game.Players.LocalPlayer
+local speedget = 1
+local speedfly = 1
 
-    local highlight = Instance.new("Highlight", part)
-    highlight.FillColor = color
-    highlight.OutlineColor = color
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-
-    if part:IsA("Model") and part:FindFirstChild("Head") then
-        local billboard = Instance.new("BillboardGui", part)
-        billboard.Adornee = part.Head
-        billboard.Size = UDim2.new(0, 200, 0, 50)
-        billboard.StudsOffset = Vector3.new(0, 2, 0)
-        billboard.AlwaysOnTop = true
-
-        local textLabel = Instance.new("TextLabel", billboard)
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Text = text
-        textLabel.TextColor3 = color
-        textLabel.TextScaled = true
-        textLabel.Font = Enum.Font.SourceSansBold
-    end
-end
-
-local function removeESP(part)
-    if part then
-        for _, obj in pairs(part:GetChildren()) do
-            if obj:IsA("Highlight") or obj:IsA("BillboardGui") then
-                obj:Destroy()
-            end
-        end
-    end
-end
-
-local function checkForMurderer()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Backpack:FindFirstChild("Knife") then
-            removeESP(player.Character)
-            addHighlight(player.Character, Color3.new(1, 0, 0), "Murderer - " .. player.Name)
-        end
-    end
-end
-
-local function checkForSheriff()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Backpack:FindFirstChild("Gun") then
-            removeESP(player.Character)
-            addHighlight(player.Character, Color3.new(0, 0, 1), "Sheriff - " .. player.Name)
-        end
-    end
-end
-
-local function checkForDroppedGun()
-    local gunDrop = Workspace:FindFirstChild("Normal") and Workspace.Normal:FindFirstChild("GunDrop")
-    if gunDrop then
-        removeESP(gunDrop)
-        addHighlight(gunDrop, Color3.new(0, 1, 0), "Dropped Gun")
-    end
-end
-
--- ================= ФАРМ (XHUB) =================
-local function farmCoinsAndBeachballs()
-    local CoinContainer = Workspace:FindFirstChild("Normal") and Workspace.Normal:FindFirstChild("CoinContainer")
-    if CoinContainer then
-        for _, coin in pairs(CoinContainer:GetChildren()) do
-            LocalPlayer.Character:SetPrimaryPartCFrame(coin.CFrame)
-            task.wait(farmCooldown)
-        end
-    end
-end
-
--- ================= KILL ALL (XHUB) =================
-local function killAllPlayers()
-    while killAllEnabled do
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-                LocalPlayer.Character:SetPrimaryPartCFrame(player.Character.PrimaryPart.CFrame)
-                task.wait(1)
-            end
-        end
-        task.wait(1)
-    end
-end
-
--- ================= AIM MURDERER (XHUB) =================
-local function aimAtMurderer()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.Backpack:FindFirstChild("Knife") and player.Character and LocalPlayer.Backpack:FindFirstChild("Gun") then
-            local murdererHead = player.Character:FindFirstChild("Head")
-            if murdererHead then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, murdererHead.Position)
-            end
-        end
-    end
-end
-
--- ================= SILENT AIM (XHUB) =================
-local oldIndex
-
-local function getClosestTarget()
-    if not silentAimEnabled then return nil end
-    
-    local targetPlayer = nil
-    local shortestDist = math.huge
-    
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        if not p.Character or not p.Character:FindFirstChild("Head") then continue end
+local function startFly()
+    if flying == false then
+        flying = true
+        repeat task.wait() until lplayer and lplayer.Character and lplayer.Character:FindFirstChild('HumanoidRootPart') and lplayer.Character:FindFirstChild('Humanoid')
         
-        local head = p.Character.Head
-        local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-        if onScreen then
-            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                targetPlayer = p
-            end
+        local T = lplayer.Character.HumanoidRootPart
+        local CONTROL = {F = 0, B = 0, L = 0, R = 0}
+        local lCONTROL = {F = 0, B = 0, L = 0, R = 0}
+        local SPEED = speedget
+        
+        local function fly()
+            flying = true
+            local BG = Instance.new('BodyGyro', T)
+            local BV = Instance.new('BodyVelocity', T)
+            BG.P = 9e4
+            BG.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+            BG.cframe = T.CFrame
+            BV.velocity = Vector3.new(0, 0.1, 0)
+            BV.maxForce = Vector3.new(9e9, 9e9, 9e9)
+            spawn(function()
+                repeat task.wait()
+                    lplayer.Character.Humanoid.PlatformStand = true
+                    if CONTROL.L + CONTROL.R ~= 0 or CONTROL.F + CONTROL.B ~= 0 then
+                        SPEED = 50
+                    elseif not (CONTROL.L + CONTROL.R ~= 0 or CONTROL.F + CONTROL.B ~= 0) and SPEED ~= 0 then
+                        SPEED = 0
+                    end
+                    if (CONTROL.L + CONTROL.R) ~= 0 or (CONTROL.F + CONTROL.B) ~= 0 then
+                        BV.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (CONTROL.F + CONTROL.B)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.F + CONTROL.B) * 0.2, 0).p) - workspace.CurrentCamera.CoordinateFrame.p)) * SPEED
+                        lCONTROL = {F = CONTROL.F, B = CONTROL.B, L = CONTROL.L, R = CONTROL.R}
+                    elseif (CONTROL.L + CONTROL.R) == 0 and (CONTROL.F + CONTROL.B) == 0 and SPEED ~= 0 then
+                        BV.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (lCONTROL.F + lCONTROL.B)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(lCONTROL.L + lCONTROL.R, (lCONTROL.F + lCONTROL.B) * 0.2, 0).p) - workspace.CurrentCamera.CoordinateFrame.p)) * SPEED
+                    else
+                        BV.velocity = Vector3.new(0, 0.1, 0)
+                    end
+                    BG.cframe = workspace.CurrentCamera.CoordinateFrame
+                until not flying
+                CONTROL = {F = 0, B = 0, L = 0, R = 0}
+                lCONTROL = {F = 0, B = 0, L = 0, R = 0}
+                SPEED = 0
+                BG:Destroy()
+                BV:Destroy()
+                lplayer.Character.Humanoid.PlatformStand = false
+            end)
         end
+        
+        Mouse.KeyDown:Connect(function(KEY)
+            if KEY:lower() == 'w' then
+                CONTROL.F = speedfly
+            elseif KEY:lower() == 's' then
+                CONTROL.B = -speedfly
+            elseif KEY:lower() == 'a' then
+                CONTROL.L = -speedfly
+            elseif KEY:lower() == 'd' then
+                CONTROL.R = speedfly
+            end
+        end)
+        Mouse.KeyUp:Connect(function(KEY)
+            if KEY:lower() == 'w' then
+                CONTROL.F = 0
+            elseif KEY:lower() == 's' then
+                CONTROL.B = 0
+            elseif KEY:lower() == 'a' then
+                CONTROL.L = 0
+            elseif KEY:lower() == 'd' then
+                CONTROL.R = 0
+            end
+        end)
+        fly()
+    else
+        flying = false
+        lplayer.Character.Humanoid.PlatformStand = false
     end
-    
-    if targetPlayer and targetPlayer.Character then
-        return targetPlayer.Character:FindFirstChild("Head")
-    end
-    return nil
 end
 
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if self == Mouse and not checkcaller() and silentAimEnabled then
-        local targetPart = getClosestTarget()
-        if targetPart then
-            if key == "Hit" then
-                return targetPart.CFrame
-            elseif key == "Target" then
-                return targetPart
+-- ================= NOCLIP (ИЗ MARSINSANITY) =================
+local noclip = false
+
+RunService.Stepped:Connect(function()
+    if noclip then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid:ChangeState(11)
+        end
+    end
+end)
+
+-- ================= INFINITE JUMP (ИЗ MARSINSANITY) =================
+local InfiniteJump = false
+
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if InfiniteJump then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
+    end
+end)
+
+-- ================= X-RAY (ИЗ MARSINSANITY) =================
+local obj = game.Workspace
+
+function XrayOn(obj)
+    for _, v in pairs(obj:GetChildren()) do
+        if (v:IsA("BasePart")) and not v.Parent:FindFirstChild("Humanoid") then
+            v.LocalTransparencyModifier = 0.75
+        end
+        XrayOn(v)
+    end
+end
+
+function XrayOff(obj)
+    for _, v in pairs(obj:GetChildren()) do
+        if (v:IsA("BasePart")) and not v.Parent:FindFirstChild("Humanoid") then
+            v.LocalTransparencyModifier = 0
+        end
+        XrayOff(v)
+    end
+end
+
+-- ================= KILL MURDERER (ИЗ MARSINSANITY) =================
+local function KillMurderer()
+    local Murderer = GetMurderer()
+    repeat
+        if Murderer ~= nil then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = Murderer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+            workspace.CurrentCamera.CFrame = Murderer.Character.HumanoidRootPart.CFrame
+        end
+        task.wait()
+    until Murderer.Character.Humanoid.Health == 0
+end
+
+-- ================= KILL ALL (ИЗ MARSINSANITY) =================
+local function KillAll()
+    for i, Victim in pairs(Players:GetPlayers()) do
+        if Victim.Name ~= LocalPlayer.Name then
+            repeat
+                task.wait()
+                LocalPlayer.Character.HumanoidRootPart.CFrame = Victim.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1)
+            until Victim.Character.Humanoid.Health == 0
+        end
+    end
+end
+
+-- ================= GUN GRABBER (ИЗ MARSINSANITY) =================
+local function GunGrabber()
+    local currentX = LocalPlayer.Character.HumanoidRootPart.CFrame.X
+    local currentY = LocalPlayer.Character.HumanoidRootPart.CFrame.Y
+    local currentZ = LocalPlayer.Character.HumanoidRootPart.CFrame.Z
+
+    if workspace:FindFirstChild("GunDrop") ~= nil then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = workspace:FindFirstChild("GunDrop").CFrame
+        task.wait(0.25)
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(currentX, currentY, currentZ)
+    else
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "CrystalHub",
+            Text = "Wait for the Sheriff's death to grab the gun",
+            Icon = "",
+            Duration = 2,
+        })
+    end
+end
+
+-- ================= COIN FARM (ИЗ MARSINSANITY) =================
+local function CoinFarm()
+    local toggle = false
+    
+    toggle = not toggle
+    while toggle do
+        task.wait(0.25)
+        local place = workspace:GetChildren()
+        local currentX = LocalPlayer.Character.HumanoidRootPart.CFrame.X
+        local currentY = LocalPlayer.Character.HumanoidRootPart.CFrame.Y
+        local currentZ = LocalPlayer.Character.HumanoidRootPart.CFrame.Z
+
+        for i, v in pairs(place) do
+            local vChildren = v:GetChildren()
+            for i, child in pairs(vChildren) do
+                if child.Name == "CoinContainer" then
+                    if child.Coin_Server:FindFirstChild("Coin") ~= nil then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = child.Coin_Server.Coin.CFrame
+                    else
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(currentX, currentY, currentZ)
+                        toggle = false
+                    end
+                end
             end
         end
     end
-    return oldIndex(self, key)
-end))
+end
 
--- ================= ФЛИНГ =================
-getgenv().flingTarget = function(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        Rayfield:Notify({ Title = "CrystalHub", Content = "Цель не найдена!", Duration = 3 })
-        return
-    end
+-- ================= ESP (ИЗ MARSINSANITY) =================
+local ESPToggle = false
+local faces = {"Back", "Bottom", "Front", "Left", "Right", "Top"}
 
-    local myChar = LocalPlayer.Character
-    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
-
-    local hrp = myChar.HumanoidRootPart
-    local targetHrp = targetPlayer.Character.HumanoidRootPart
-    local oldCFrame = hrp.CFrame
-    local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-
-    for _, part in ipairs(myChar:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = false end
-    end
-    if humanoid then humanoid.PlatformStand = true end
-
-    local angle = 0
-    local startTime = tick()
-    local flingConn
-
-    flingConn = RunService.Heartbeat:Connect(function()
-        if tick() - startTime > 1.5 or not targetHrp or not targetHrp.Parent then
-            if flingConn then flingConn:Disconnect() end
-            return
+function MakeESP()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v.Name ~= LocalPlayer.Name then
+            local bgui = Instance.new("BillboardGui", v.Character.Head)
+            bgui.Name = ("EGUI")
+            bgui.AlwaysOnTop = true
+            bgui.ExtentsOffset = Vector3.new(0, 2, 0)
+            bgui.Size = UDim2.new(0, 200, 0, 50)
+            local nam = Instance.new("TextLabel", bgui)
+            nam.Text = v.Name
+            nam.BackgroundTransparency = 1
+            nam.TextSize = 15
+            nam.Font = ("GothamBold")
+            nam.TextColor3 = Color3.new(255, 255, 255)
+            nam.Size = UDim2.new(0, 200, 0, 50)
+            
+            if v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
+                for _, p in pairs(v.Character:GetChildren()) do
+                    if p.Name == ("Head") or p.Name == ("Torso") or p.Name == ("Right Arm") or p.Name == ("Right Leg") or p.Name == ("Left Arm") or p.Name == ("Left Leg") then
+                        for _, f in pairs(faces) do
+                            local m = Instance.new("SurfaceGui", p)
+                            m.Name = ("EGUI")
+                            m.Face = f
+                            m.AlwaysOnTop = true
+                            local mf = Instance.new("Frame", m)
+                            mf.Size = UDim2.new(1, 0, 1, 0)
+                            mf.BorderSizePixel = 0
+                            mf.BackgroundTransparency = 0.5
+                            mf.BackgroundColor3 = Color3.new(0, 0, 255)
+                        end
+                    end
+                end
+            elseif v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
+                for _, p in pairs(v.Character:GetChildren()) do
+                    if p.Name == ("Head") or p.Name == ("Torso") or p.Name == ("Right Arm") or p.Name == ("Right Leg") or p.Name == ("Left Arm") or p.Name == ("Left Leg") then
+                        for _, f in pairs(faces) do
+                            local m = Instance.new("SurfaceGui", p)
+                            m.Name = ("EGUI")
+                            m.Face = f
+                            m.AlwaysOnTop = true
+                            local mf = Instance.new("Frame", m)
+                            mf.Size = UDim2.new(1, 0, 1, 0)
+                            mf.BorderSizePixel = 0
+                            mf.BackgroundTransparency = 0.5
+                            mf.BackgroundColor3 = Color3.new(255, 0, 0)
+                        end
+                    end
+                end
+            else
+                for _, p in pairs(v.Character:GetChildren()) do
+                    if p.Name == ("Head") or p.Name == ("Torso") or p.Name == ("Right Arm") or p.Name == ("Right Leg") or p.Name == ("Left Arm") or p.Name == ("Left Leg") then
+                        for _, f in pairs(faces) do
+                            local m = Instance.new("SurfaceGui", p)
+                            m.Name = ("EGUI")
+                            m.Face = f
+                            m.AlwaysOnTop = true
+                            local mf = Instance.new("Frame", m)
+                            mf.Size = UDim2.new(1, 0, 1, 0)
+                            mf.BorderSizePixel = 0
+                            mf.BackgroundTransparency = 0.5
+                            mf.BackgroundColor3 = Color3.new(255, 255, 255)
+                        end
+                    end
+                end
+            end
         end
-
-        hrp.CFrame = targetHrp.CFrame * CFrame.Angles(0, math.rad(angle), 0)
-        hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-        hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-        angle = angle + 45
-    end)
-
-    task.wait(1.5)
-    if flingConn then flingConn:Disconnect() end
-
-    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    hrp.CFrame = oldCFrame
-    if humanoid then humanoid.PlatformStand = false end
-
-    for _, part in ipairs(myChar:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = true end
     end
+end
 
-    Rayfield:Notify({ Title = "CrystalHub", Content = "Флинг завершён!", Duration = 3 })
+function ClearESP()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == ("EGUI") then
+            v:Destroy()
+        end
+    end
+end
+
+function RefreshESP()
+    if ESPToggle then
+        task.wait(1)
+        ClearESP()
+        MakeESP()
+    end
 end
 -- =================================================================
 --                CRYSTALHUB MM2 ULTIMATE EDITION
 --                           PART 3/4
 -- =================================================================
 
--- ================= ИНТЕРФЕЙС ЭЛЕМЕНТЫ =================
-
--- Вкладка: Бой
+-- ================= ВКЛАДКА: БОЙ =================
 CombatTab:CreateToggle({
-   Name = "Авто-подбор Пистолета",
+   Name = "Gun Grabber",
    CurrentValue = false,
-   Flag = "AutoGrabToggle",
-   Callback = function(Value) getgenv().AutoGrabGunEnabled = Value end,
-})
-
-CombatTab:CreateButton({
-   Name = "Флинг Убийцы",
-   Callback = function()
-       local m = GetMurderer()
-       getgenv().flingTarget(m)
+   Flag = "GunGrabberToggle",
+   Callback = function(Value)
+       getgenv().AutoGrabGunEnabled = Value
+       if Value then GunGrabber() end
    end,
 })
 
 CombatTab:CreateButton({
-   Name = "Флинг Шерифа",
+   Name = "Kill Murderer",
    Callback = function()
-       local s = GetSheriff()
-       getgenv().flingTarget(s)
+       KillMurderer()
    end,
 })
 
-CombatTab:CreateToggle({
-   Name = "Kill All Players (XHub)",
+CombatTab:CreateButton({
+   Name = "Kill All",
+   Callback = function()
+       KillAll()
+   end,
+})
+
+-- ================= ВКЛАДКА: ВИЗУАЛЫ =================
+VisualsTab:CreateToggle({
+   Name = "Everyone ESP",
    CurrentValue = false,
-   Flag = "KillAllToggle",
+   Flag = "ESPToggle",
    Callback = function(Value)
-       killAllEnabled = Value
+       ESPToggle = Value
        if Value then
-           task.spawn(killAllPlayers)
-       end
-   end,
-})
-
--- Вкладка: Silent Aim
-SilentTab:CreateToggle({
-   Name = "Silent Aim (XHub)",
-   CurrentValue = false,
-   Flag = "SilentAimToggle",
-   Callback = function(Value)
-       silentAimEnabled = Value
-   end,
-})
-
-SilentTab:CreateToggle({
-   Name = "Aim Murderer (If Sheriff)",
-   CurrentValue = false,
-   Flag = "AimMurdererToggle",
-   Callback = function(Value)
-       if Value then
-           RunService.RenderStepped:Connect(aimAtMurderer)
+           ClearESP()
+           MakeESP()
        else
-           RunService.RenderStepped:Disconnect(aimAtMurderer)
+           ClearESP()
        end
    end,
 })
 
--- Вкладка: Визуалы
-VisualsTab:CreateToggle({
-   Name = "ESP Murderer (XHub)",
-   CurrentValue = false,
-   Flag = "ESPMurdererToggle",
-   Callback = function(Value)
-       ESPEnabled.Murderer = Value
-       if not Value then
-           for _, player in pairs(Players:GetPlayers()) do
-               removeESP(player.Character)
-           end
-       end
+VisualsTab:CreateButton({
+   Name = "Refresh ESP",
+   Callback = function()
+       RefreshESP()
    end,
 })
 
 VisualsTab:CreateToggle({
-   Name = "ESP Sheriff (XHub)",
+   Name = "X-Ray",
    CurrentValue = false,
-   Flag = "ESPSheriffToggle",
+   Flag = "XRayToggle",
    Callback = function(Value)
-       ESPEnabled.Sheriff = Value
-       if not Value then
-           for _, player in pairs(Players:GetPlayers()) do
-               removeESP(player.Character)
-           end
-       end
-   end,
-})
-
-VisualsTab:CreateToggle({
-   Name = "ESP Dropped Gun (XHub)",
-   CurrentValue = false,
-   Flag = "ESPGunToggle",
-   Callback = function(Value)
-       ESPEnabled.DroppedGun = Value
-       if not Value then
-           local gunDrop = Workspace:FindFirstChild("Normal") and Workspace.Normal:FindFirstChild("GunDrop")
-           removeESP(gunDrop)
-       end
-   end,
-})
-
-VisualsTab:CreateToggle({
-   Name = "FullBright",
-   CurrentValue = false,
-   Flag = "FullBrightToggle",
-   Callback = function(Value)
-       getgenv().FullBrightEnabled = Value
+       getgenv().XRayEnabled = Value
        if Value then
-           Lighting.Brightness = 2
-           Lighting.ClockTime = 14
-           Lighting.FogEnd = 100000
-           Lighting.GlobalShadows = false
-           Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright включён", Duration = 2 })
+           XrayOn(obj)
        else
-           Lighting.Brightness = 1
-           Lighting.ClockTime = 14
-           Lighting.FogEnd = 1000
-           Lighting.GlobalShadows = true
-           Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "FullBright выключен", Duration = 2 })
+           XrayOff(obj)
        end
    end,
 })
 
--- Вкладка: Автофарм
+-- ================= ВКЛАДКА: АВТОФАРМ =================
 FarmTab:CreateToggle({
-   Name = "Farm Coins & Beachballs (XHub)",
+   Name = "Coin Farm (RISKY)",
    CurrentValue = false,
-   Flag = "FarmCoinsToggle",
+   Flag = "CoinFarmToggle",
    Callback = function(Value)
-       FarmCoinsEnabled = Value
+       getgenv().AutoFarmEnabled = Value
+       if Value then
+           CoinFarm()
+       end
    end,
 })
 
-FarmTab:CreateInput({
-   Name = "Farm Cooldown (sec)",
-   PlaceholderText = "0.1",
-   CurrentValue = "0.1",
-   Flag = "FarmCooldownInput",
+-- ================= ВКЛАДКА: ТЕЛЕПОРТЫ =================
+TeleportTab:CreateButton({
+   Name = "TP to Lobby",
+   Callback = function()
+       LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108.5, 145, 0.6)
+   end,
+})
+
+TeleportTab:CreateButton({
+   Name = "TP to Map",
+   Callback = function()
+       local Workplace = workspace:GetChildren()
+       for i, Thing in pairs(Workplace) do
+           local ThingChildren = Thing:GetChildren()
+           for i, Child in pairs(ThingChildren) do
+               if Child.Name == "Spawns" then
+                   LocalPlayer.Character.HumanoidRootPart.CFrame = Child.Spawn.CFrame
+               end
+           end
+       end
+   end,
+})
+
+TeleportTab:CreateButton({
+   Name = "TP to Murderer",
+   Callback = function()
+       local Players = game:GetService("Players")
+       for i, player in pairs(Players:GetPlayers()) do
+           local bp = player.Backpack:GetChildren()
+           for i, tool in pairs(bp) do
+               if tool.Name == "Knife" then
+                   LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players[tool.Parent.Parent.Name].Character.HumanoidRootPart.CFrame
+               end
+           end
+       end
+   end,
+})
+
+TeleportTab:CreateButton({
+   Name = "TP to Sheriff",
+   Callback = function()
+       local Players = game:GetService("Players")
+       for i, player in pairs(Players:GetPlayers()) do
+           local bp = player.Backpack:GetChildren()
+           for i, tool in pairs(bp) do
+               if tool.Name == "Gun" then
+                   LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players[tool.Parent.Parent.Name].Character.HumanoidRootPart.CFrame
+               end
+           end
+       end
+   end,
+})
+
+TeleportTab:CreateTextBox({
+   Name = "TP to Player",
+   PlaceholderText = "Insert Name",
+   CurrentValue = "",
+   Flag = "TeleportTB",
    Callback = function(Value)
-       farmCooldown = tonumber(Value) or 0.1
+       local Victim = Value
+       LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players[Victim].Character.HumanoidRootPart.CFrame
    end,
 })
 
--- Вкладка: Телепорты
-TeleportTab:CreateButton({
-   Name = "TP to Murderer (XHub)",
-   Callback = function()
-       local m = GetMurderer()
-       if m and m.Character then
-           LocalPlayer.Character:SetPrimaryPartCFrame(m.Character.PrimaryPart.CFrame)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Murderer", Duration = 2 })
-       end
-   end,
-})
-
-TeleportTab:CreateButton({
-   Name = "TP to Sheriff (XHub)",
-   Callback = function()
-       local s = GetSheriff()
-       if s and s.Character then
-           LocalPlayer.Character:SetPrimaryPartCFrame(s.Character.PrimaryPart.CFrame)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Sheriff", Duration = 2 })
-       end
-   end,
-})
-
-TeleportTab:CreateButton({
-   Name = "TP to Gun (XHub)",
-   Callback = function()
-       local gunDrop = Workspace:FindFirstChild("Normal") and Workspace.Normal:FindFirstChild("GunDrop")
-       if gunDrop then
-           LocalPlayer.Character:SetPrimaryPartCFrame(gunDrop.CFrame)
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Teleported to Gun", Duration = 2 })
-       else
-           Rayfield:Notify({ Title = "CrystalHub", Content = "Gun not found!", Duration = 2 })
-       end
-   end,
-})
-
--- Вкладка: Игрок
+-- ================= ВКЛАДКА: ИГРОК =================
 PlayerTab:CreateToggle({
-   Name = "Noclip (XHub)",
+   Name = "Fly [X]",
+   CurrentValue = false,
+   Flag = "FlyToggle",
+   Callback = function(Value)
+       getgenv().FlyEnabled = Value
+       if Value then
+           startFly()
+       else
+           flying = false
+           if LocalPlayer.Character then
+               LocalPlayer.Character.Humanoid.PlatformStand = false
+           end
+       end
+   end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Noclip [C]",
    CurrentValue = false,
    Flag = "NoclipToggle",
    Callback = function(Value)
-       noclipEnabled = Value
+       noclip = Value
+       getgenv().NoclipEnabled = Value
    end,
 })
 
 PlayerTab:CreateToggle({
-   Name = "Fly",
+   Name = "Infinite Jump [V]",
    CurrentValue = false,
-   Flag = "FlyToggle",
-   Callback = function(Value) getgenv().FlyEnabled = Value end,
-})
-
-PlayerTab:CreateSlider({
-   Name = "Walkspeed (XHub)",
-   Range = {16, 200},
-   Increment = 1,
-   Suffix = " speed",
-   CurrentValue = 16,
-   Flag = "WalkspeedSlider",
+   Flag = "InfiniteJumpToggle",
    Callback = function(Value)
-       local char = LocalPlayer.Character
-       if char then
-           local humanoid = char:FindFirstChild("Humanoid")
-           if humanoid then
-               humanoid.WalkSpeed = Value
-           end
-       end
+       InfiniteJump = Value
+       getgenv().InfiniteJumpEnabled = Value
    end,
 })
 
-PlayerTab:CreateSlider({
-   Name = "Jump Power (XHub)",
-   Range = {50, 890},
-   Increment = 1,
-   Suffix = " power",
-   CurrentValue = 50,
-   Flag = "JumpPowerSlider",
+PlayerTab:CreateTextBox({
+   Name = "Walkspeed",
+   PlaceholderText = "Insert Walkspeed",
+   CurrentValue = "",
+   Flag = "WalkspeedTB",
    Callback = function(Value)
-       local char = LocalPlayer.Character
-       if char then
-           local humanoid = char:FindFirstChild("Humanoid")
-           if humanoid then
-               humanoid.JumpPower = Value
-           end
-       end
+       LocalPlayer.Character.Humanoid.WalkSpeed = Value
+       getgenv().CustomSpeed = tonumber(Value) or 16
    end,
 })
 
-PlayerTab:CreateInput({
-   Name = "Change Gravity (XHub)",
-   PlaceholderText = "Enter gravity",
-   CurrentValue = tostring(Workspace.Gravity),
-   Flag = "GravityInput",
-   Callback = function(Value)
-       Workspace.Gravity = tonumber(Value) or 196.2
-       Rayfield:Notify({ Title = "CrystalHub", Content = "Gravity set to " .. Value, Duration = 2 })
+PlayerTab:CreateButton({
+   Name = "Reset Walkspeed",
+   Callback = function()
+       LocalPlayer.Character.Humanoid.WalkSpeed = 16
+       getgenv().CustomSpeed = 16
    end,
 })
 
-PlayerTab:CreateToggle({
-   Name = "Loop Walkspeed/JumpPower (XHub)",
-   CurrentValue = false,
-   Flag = "LoopAttributesToggle",
+PlayerTab:CreateTextBox({
+   Name = "Jump Power",
+   PlaceholderText = "Insert JumpPower",
+   CurrentValue = "",
+   Flag = "JumpPowerTB",
    Callback = function(Value)
-       loopMovementAttributes = Value
+       LocalPlayer.Character.Humanoid.JumpPower = Value
+       getgenv().CustomJump = tonumber(Value) or 50
+   end,
+})
+
+PlayerTab:CreateButton({
+   Name = "Reset Jump",
+   Callback = function()
+       LocalPlayer.Character.Humanoid.JumpPower = 50
+       getgenv().CustomJump = 50
    end,
 })
 -- =================================================================
@@ -560,154 +593,30 @@ PlayerTab:CreateToggle({
 --                           PART 4/4
 -- =================================================================
 
--- ================= ОБНОВЛЕНИЕ ESP (XHUB) =================
-RunService.RenderStepped:Connect(function()
-    if ESPEnabled.Murderer then
-        checkForMurderer()
-    end
-    if ESPEnabled.Sheriff then
-        checkForSheriff()
-    end
-    if ESPEnabled.DroppedGun then
-        checkForDroppedGun()
+-- ================= ОБНОВЛЕНИЕ ESP (ИЗ MARSINSANITY) =================
+Players.PlayerAdded:Connect(function(v)
+    if ESPToggle then
+        task.wait(1)
+        ClearESP()
+        MakeESP()
     end
 end)
 
--- ================= LOOP ATTRIBUTES (XHUB) =================
-RunService.RenderStepped:Connect(function()
-    if loopMovementAttributes then
-        local char = LocalPlayer.Character
-        if char then
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then
-                local speed = Window:GetFlag("WalkspeedSlider")
-                local jump = Window:GetFlag("JumpPowerSlider")
-                if speed then humanoid.WalkSpeed = speed.CurrentValue or 16 end
-                if jump then humanoid.JumpPower = jump.CurrentValue or 50 end
-            end
-        end
+Players.PlayerRemoving:Connect(function(v)
+    if ESPToggle then
+        task.wait(1)
+        ClearESP()
+        MakeESP()
     end
 end)
-
--- ================= NOCLIP (XHUB) =================
-RunService.Stepped:Connect(function()
-    if noclipEnabled and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
-            end
-        end
-    end
-end)
-
--- ================= ФАРМ (XHUB) =================
-RunService.Heartbeat:Connect(function()
-    if FarmCoinsEnabled then
-        farmCoinsAndBeachballs()
-    end
-end)
-
--- ================= KILL ALL (XHUB) =================
-RunService.Heartbeat:Connect(function()
-    if killAllEnabled then
-        killAllPlayers()
-    end
-end)
-
--- ================= FLY =================
-local flyConnection = nil
-local flyBodyGyro = nil
-local flyBodyVelocity = nil
-local flySpeed = 0
-local flyMaxSpeed = 50
-
-local function startFly()
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-    if not torso then return end
-    
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then return end
-    
-    if not getgenv().FlyEnabled then
-        humanoid.PlatformStand = false
-        return
-    end
-    
-    humanoid.PlatformStand = true
-    
-    flyBodyGyro = Instance.new("BodyGyro", torso)
-    flyBodyGyro.P = 9e4
-    flyBodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-    flyBodyGyro.cframe = torso.CFrame
-    
-    flyBodyVelocity = Instance.new("BodyVelocity", torso)
-    flyBodyVelocity.velocity = Vector3.new(0, 0.1, 0)
-    flyBodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
-    
-    if flyConnection then flyConnection:Disconnect() end
-    
-    local speed = 0
-    local maxSpeed = 50
-    
-    flyConnection = RunService.Heartbeat:Connect(function()
-        if not getgenv().FlyEnabled or not char or not char.Parent then
-            if flyConnection then flyConnection:Disconnect() end
-            if char then
-                local humanoid = char:FindFirstChild("Humanoid")
-                if humanoid then
-                    humanoid.PlatformStand = false
-                end
-            end
-            return
-        end
-        
-        local cam = Workspace.CurrentCamera
-        if not cam then return end
-        
-        local moveDir = UserInputService:GetMoveDirection()
-        
-        if moveDir and moveDir.Magnitude > 0 then
-            speed = math.min(maxSpeed, moveDir.Magnitude * maxSpeed)
-            
-            local lookVector = cam.CFrame.LookVector
-            local rightVector = cam.CFrame.RightVector
-            
-            local moveVector = (lookVector * -moveDir.Z) + (rightVector * moveDir.X)
-            flyBodyVelocity.velocity = moveVector * speed
-            flyBodyGyro.cframe = cam.CFrame
-        else
-            speed = math.max(0, speed - 2)
-            flyBodyVelocity.velocity = flyBodyVelocity.velocity * 0.9
-        end
-    end)
-end
 
 task.spawn(function()
     while true do
-        task.wait(0.1)
-        if getgenv().FlyEnabled then
-            if not flyBodyVelocity then
-                startFly()
-            end
-        else
-            if flyConnection then flyConnection:Disconnect() end
-            if flyBodyGyro then flyBodyGyro:Destroy() end
-            if flyBodyVelocity then flyBodyVelocity:Destroy() end
-            
-            local char = LocalPlayer.Character
-            if char then
-                local humanoid = char:FindFirstChild("Humanoid")
-                if humanoid then
-                    humanoid.PlatformStand = false
-                end
-            end
-            
-            flyBodyGyro = nil
-            flyBodyVelocity = nil
-            flyConnection = nil
+        task.wait(60)
+        if ESPToggle then
+            task.wait(1)
+            ClearESP()
+            MakeESP()
         end
     end
 end)
